@@ -1,0 +1,61 @@
+.timeline {
+  background: #1a1a1a;
+  border-bottom: 1px solid #444;
+  height: 60px;
+  position: relative;
+  overflow: hidden;
+}
+
+.timeline-header {
+  position: relative;
+  height: 100%;
+}
+
+.time-ruler {
+  position: relative;
+  height: 100%;
+  background: linear-gradient(to right, #2a2a2a 1px, transparent 1px);
+  background-size: 100px 100%;
+}
+
+.time-marker {
+  position: absolute;
+  top: 0;
+  height: 100%;
+}
+
+.time-marker-line {
+  width: 1px;
+  height: 20px;
+  background: #666;
+  margin-top: 5px;
+}
+
+.time-marker-text {
+  color: #888;
+  font-size: 11px;
+  margin-top: 2px;
+  font-family: monospace;
+}
+
+.playhead {
+  position: absolute;
+  top: 0;
+  width: 2px;
+  height: 100%;
+  background: #ff4444;
+  z-index: 10;
+  pointer-events: none;
+}
+
+.playhead::before {
+  content: '';
+  position: absolute;
+  top: -5px;
+  left: -4px;
+  width: 0;
+  height: 0;
+  border-left: 5px solid transparent;
+  border-right: 5px solid transparent;
+  border-top: 8px solid #ff4444;
+}

@@ -1,0 +1,236 @@
+/**
+ * Timeline Component Styles
+ * Professional DAW timeline with grid system and tracks
+ */
+
+.timeline {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  background: #222;
+  position: relative;
+  overflow: hidden;
+}
+
+/* Arrangement Sub-Toolbar */
+.arrangement-toolbar {
+  height: 38px;
+  background: linear-gradient(180deg, #444 0%, #353535 100%);
+  border-bottom: 1px solid var(--border-main);
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 0 10px;
+}
+
+.toolbar-left {
+  display: flex;
+  align-items: center;
+  gap: 15px;
+}
+
+.toolbar-menu {
+  display: flex;
+  gap: 12px;
+  font-size: var(--f-size-md);
+  color: #ccc;
+  font-weight: 500;
+}
+
+.toolbar-menu span:hover { color: #fff; cursor: pointer; }
+
+.toolbar-controls {
+  display: flex;
+  gap: 4px;
+}
+
+.tb-btn {
+  background: #2a2a2a;
+  border: 1px solid #111;
+  color: #aaa;
+  font-size: 11px;
+  padding: 2px 8px;
+  border-radius: 2px;
+}
+
+.zoom-controls {
+  display: flex;
+  gap: 8px;
+}
+
+.zoom-slider {
+  background: #111;
+  border: 1px solid #444;
+  border-radius: 2px;
+}
+
+.zoom-slider.h { width: 60px; height: 12px; }
+.zoom-slider.v { 
+  width: 12px; 
+  height: 60px; 
+  position: absolute; 
+  right: 5px; 
+  top: 100px; 
+  z-index: 1000;
+  background: #111;
+  border: 1px solid #444;
+}
+
+/* Time Ruler */
+.time-ruler {
+  display: flex;
+  background: #333;
+  border-bottom: 1px solid #111;
+  z-index: 100;
+}
+
+.time-ruler-track-header {
+  height: 100%;
+  border-right: 1px solid #111;
+  background: #3a3a3a;
+  display: flex;
+  align-items: center;
+  padding: 0 10px;
+}
+
+.track-add-btns {
+  display: flex;
+  gap: 4px;
+}
+
+.add-btn {
+  background: #444;
+  border: 1px solid #111;
+  color: #fff;
+  width: 24px;
+  height: 24px;
+  font-size: 14px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: 2px;
+}
+
+.time-ruler-content {
+  flex: 1;
+  position: relative;
+  overflow: hidden;
+  height: 100%;
+  background: #333;
+}
+
+.time-marker {
+  position: absolute;
+  top: 0;
+  height: 100%;
+  display: flex;
+  flex-direction: column;
+}
+
+.marker-line {
+  width: 1px;
+  background: #555;
+  height: 8px;
+  margin-top: auto;
+}
+
+.major .marker-line {
+  background: #888;
+  height: 15px;
+}
+
+.marker-text {
+  font-size: 11px;
+  color: #ccc;
+  font-weight: bold;
+  position: absolute;
+  top: 4px;
+  left: 4px;
+}
+
+/* Playhead */
+.playhead {
+  position: absolute;
+  top: 0;
+  z-index: 200;
+  pointer-events: none;
+}
+
+.playhead-triangle {
+  width: 0;
+  height: 0;
+  border-left: 6px solid transparent;
+  border-right: 6px solid transparent;
+  border-top: 10px solid var(--accent-blue);
+  margin-left: -5.5px;
+}
+
+.playhead-line {
+  position: absolute;
+  width: 1px;
+  background: #ffffff;
+  box-shadow: 0 0 8px rgba(255, 255, 255, 0.8), 0 0 2px rgba(48, 140, 252, 1);
+  z-index: 999;
+  pointer-events: none;
+}
+
+/* Tracks Container */
+.tracks-container {
+  flex: 1;
+  overflow: auto;
+  position: relative;
+  z-index: 50;
+}
+
+.tracks-list {
+  display: flex;
+  flex-direction: column;
+}
+
+/* Grid Overlay — must sit ABOVE tracks-container so the playhead line is visible */
+.grid-overlay {
+  position: absolute;
+  top: 38px;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  pointer-events: none;
+  z-index: 200; /* higher than .tracks-container (50) */
+}
+
+.grid-line.vertical {
+  width: 1px;
+  background: rgba(255, 255, 255, 0.05);
+}
+
+.grid-line.horizontal {
+  position: absolute;
+  height: 1px;
+  width: 100%;
+  background: rgba(255, 255, 255, 0.05);
+}
+
+/* Responsive Design */
+@media (max-width: 768px) {
+  .time-ruler-track-header {
+    width: 150px !important;
+  }
+  
+  .ruler-header-content {
+    font-size: 10px;
+  }
+  
+  .marker-text {
+    font-size: 9px;
+  }
+}
+
+/* Animation for playhead */
+@keyframes playheadPulse {
+  0%, 100% { opacity: 1; }
+  50% { opacity: 0.8; }
+}
+
+.playhead-line {
+  animation: playheadPulse 2s infinite;
+}

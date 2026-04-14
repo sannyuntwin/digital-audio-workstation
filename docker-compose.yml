@@ -1,0 +1,70 @@
+services:
+  # Database (PostgreSQL)
+  web-daw-db:
+    image: postgres:15-alpine
+    container_name: web-daw-db
+    environment:
+      - POSTGRES_DB=webdaw
+      - POSTGRES_USER=webdaw
+      - POSTGRES_PASSWORD=webdaw123
+      - POSTGRES_INITDB_ARGS=--encoding=UTF-8 --lc-collate=C --lc-ctype=C
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+      - ./server/database/init.sql:/docker-entrypoint-initdb.d/init.sql
+    ports:
+      - "5432:5432"
+    restart: unless-stopped
+    networks:
+      - web-daw-network
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U webdaw -d webdaw"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+  # Backend (Server)
+  web-daw-backend:
+    build:
+      context: ./server
+      dockerfile: Dockerfile
+      args:
+        - NODE_ENV=development
+    container_name: web-daw-backend
+    ports:
+      - "8000:8000"
+    environment:
+      - NODE_ENV=development
+      - PORT=8000
+      - CLIENT_URL=http://localhost:3000
+      - MAX_FILE_SIZE=50MB
+      - UPLOAD_DIR=./uploads
+      - JWT_SECRET=dev-jwt-secret-key
+      - SESSION_SECRET=dev-session-secret-key
+      # Database Configuration
+      - DB_HOST=web-daw-db
+      - DB_PORT=5432
+      - DB_NAME=webdaw
+      - DB_USER=webdaw
+      - DB_PASSWORD=webdaw123
+      - DATABASE_URL=postgresql://webdaw:webdaw123@web-daw-db:5432/webdaw
+    volumes:
+      - ./server/src:/app/src
+      - ./server/server.js:/app/server.js
+      - ./server/uploads:/app/uploads
+    restart: unless-stopped
+    networks:
+      - web-daw-network
+    depends_on:
+      web-daw-db:
+        condition: service_healthy
+
+  
+networks:
+  web-daw-network:
+    driver: bridge
+
+volumes:
+  postgres_data:
+    driver: local
+  uploads:
+    driver: local

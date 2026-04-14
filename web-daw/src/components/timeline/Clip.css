@@ -1,0 +1,91 @@
+.clip {
+  position: absolute;
+  border-radius: 2px;
+  overflow: hidden;
+  border: 1px solid rgba(0,0,0,0.5);
+  box-shadow: inset 0 1px 0 rgba(255,255,255,0.1), 0 2px 4px rgba(0,0,0,0.3);
+  cursor: grab;
+  display: flex;
+  flex-direction: column;
+}
+
+.clip.selected {
+  outline: 2px solid #5bc4ff;
+  outline-offset: -1px;
+  z-index: 100;
+}
+
+.clip-header-bar {
+  height: 14px;
+  background: rgba(0,0,0,0.3);
+  display: flex;
+  align-items: center;
+  padding: 0 4px;
+  gap: 4px;
+  border-bottom: 1px solid rgba(0,0,0,0.2);
+}
+
+.clip-icon {
+  font-size: 8px;
+  opacity: 0.8;
+}
+
+.clip-name {
+  font-size: 9px;
+  font-weight: 600;
+  color: #fff;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  text-shadow: 0 1px 1px rgba(0,0,0,0.5);
+}
+
+.clip-content {
+  flex: 1;
+  position: relative;
+  overflow: hidden;
+}
+
+/* Logic Specific Gradients */
+.clip-audio {
+  background: linear-gradient(180deg, #308cfc 0%, #1a5bb0 100%);
+}
+
+.waveform-path {
+  fill: rgba(255, 255, 255, 0.4);
+  stroke: none;
+}
+
+.clip-midi {
+  background: linear-gradient(180deg, #00d26a 0%, #008f48 100%);
+}
+
+.midi-notes-logic {
+  position: absolute;
+  top: 0; left: 0; width: 100%; height: 100%;
+}
+
+.midi-note-box {
+  position: absolute;
+  height: 3px;
+  background: #fff;
+  border-radius: 1px;
+  box-shadow: 0 1px 2px rgba(0,0,0,0.3);
+}
+
+.clip-percussion {
+  background: linear-gradient(180deg, #c46b14 0%, #8b4a0a 100%);
+}
+
+/* Resize Handles */
+.clip-handle {
+  position: absolute;
+  top: 0;
+  width: 6px;
+  height: 100%;
+  cursor: ew-resize;
+  z-index: 10;
+}
+
+.clip-handle.left { left: 0; }
+.clip-handle.right { right: 0; }

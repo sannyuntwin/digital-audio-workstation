@@ -1,0 +1,26 @@
+.track-area {
+  flex: 1;
+  overflow-y: auto;
+  background: #1a1a1a;
+}
+
+.track-list {
+  position: relative;
+}
+
+.track-area::-webkit-scrollbar {
+  width: 10px;
+}
+
+.track-area::-webkit-scrollbar-track {
+  background: #2a2a2a;
+}
+
+.track-area::-webkit-scrollbar-thumb {
+  background: #555;
+  border-radius: 5px;
+}
+
+.track-area::-webkit-scrollbar-thumb:hover {
+  background: #666;
+}

@@ -1,0 +1,558 @@
+/**
+ * DAW Interface Page Styles
+ * Main audio production workspace
+ */
+
+:root {
+  /* Logic Pro X High-Fidelity Palette */
+  --bg-main: #2a2a2a;
+  --bg-darker: #1a1a1a;
+  --bg-header: #353535;
+  --bg-display: #0d1217;
+  --bg-track: #3b3b3b;
+  --bg-inspector: #333333;
+  
+  --border-main: #111111;
+  --border-light: #444444;
+  --border-active: #5bc4ff;
+  
+  --text-main: #d0d0d0;
+  --text-dim: #888888;
+  --text-lcd: #308cfc;
+  
+  --accent-blue: #308cfc;
+  --accent-green: #2ecc71;
+  --accent-red: #e74c3c;
+  --accent-yellow: #f1c40f;
+  
+  /* FX & Slot Colors */
+  --slot-midi: #0088cc;
+  --slot-audio: #00acc1;
+  --slot-instrument: #3f51b5;
+  --slot-empty: #262626;
+  
+  /* Region Colors */
+  --region-midi: #00d26a;
+  --region-audio: #4CAF50;
+  --region-automation: #ff9800;
+  --region-marker: #e91e63;
+  
+  /* Transport Colors */
+  --transport-bg: #2a2a2a;
+  --transport-border: #444;
+  --transport-button: #4CAF50;
+  --transport-button-active: #45a049;
+  
+  /* Timeline Colors */
+  --timeline-bg: #1a1a1a;
+  --timeline-ruler: #333;
+  --timeline-grid: #444;
+  --timeline-playhead: #4CAF50;
+  
+  /* UI Constants */
+  --toolbar-height: 60px;
+  --sidebar-width: 300px;
+  --track-height: 60px;
+  --track-header-width: 200px;
+}
+
+.daw-interface {
+  height: 100vh;
+  background: var(--bg-darker);
+  color: var(--text-main);
+  font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+  user-select: none;
+}
+
+/* Header/Top Bar - Integrated into Transport */
+.daw-header {
+  display: none; /* Logic style: Transport is the header */
+}
+
+/* Transport Top Section */
+.transport-top {
+  background: var(--bg-header);
+  height: var(--toolbar-height);
+  flex-shrink: 0;
+  display: flex;
+  align-items: center;
+  border-bottom: 1px solid var(--border-main);
+  box-shadow: 0 2px 5px rgba(0,0,0,0.3);
+  z-index: 100;
+}
+
+/* Toolbar - The secondary bar with Edit, Functions, etc. */
+.daw-toolbar {
+  background: var(--bg-main);
+  height: 40px;
+  display: flex;
+  align-items: center;
+  padding: 0 10px;
+  border-bottom: 1px solid var(--border-main);
+  gap: 15px;
+  font-size: 13px;
+  color: #bbb;
+}
+
+.toolbar-group {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.toolbar-btn {
+  background: transparent;
+  border: none;
+  color: #ccc;
+  padding: 4px 8px;
+  border-radius: 3px;
+  cursor: pointer;
+}
+
+.toolbar-btn:hover {
+  background: rgba(255,255,255,0.1);
+}
+
+.toolbar-btn.active {
+  background: var(--border-light);
+  color: white;
+}
+
+.toolbar-divider {
+  width: 1px;
+  height: 20px;
+  background: var(--border-light);
+  margin: 0 5px;
+}
+
+/* Main Content */
+.daw-main {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+}
+
+.main-layout {
+  display: flex;
+  flex: 1;
+  overflow: hidden;
+}
+
+.content-area {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+  position: relative;
+}
+
+.daw-content {
+  flex: 1;
+  overflow: hidden;
+  position: relative;
+  background: var(--timeline-bg);
+}
+
+.url-input {
+  flex: 1;
+  min-width: 200px;
+  padding: 10px 15px;
+  border: 1px solid rgba(255, 255, 255, 0.2);
+  border-radius: 6px;
+  background: rgba(255, 255, 255, 0.1);
+  color: white;
+  font-size: 14px;
+}
+
+.url-input:focus {
+  outline: none;
+  border-color: #4CAF50;
+  background: rgba(255, 255, 255, 0.15);
+}
+
+.url-input::placeholder {
+  color: rgba(255, 255, 255, 0.5);
+}
+
+.load-btn,
+.demo-btn {
+  background: linear-gradient(135deg, #4CAF50, #45a049);
+  border: none;
+  border-radius: 6px;
+  color: white;
+  padding: 10px 20px;
+  font-size: 14px;
+  font-weight: 600;
+  cursor: pointer;
+  transition: all 0.3s ease;
+}
+
+.load-btn:hover,
+.demo-btn:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 4px 15px rgba(76, 175, 80, 0.3);
+}
+
+.error-message {
+  margin-top: 10px;
+  padding: 10px 15px;
+  background: rgba(244, 67, 54, 0.1);
+  border: 1px solid #f44336;
+  border-radius: 6px;
+  color: #ff6b6b;
+  font-size: 14px;
+}
+
+/* Audio Loader Section */
+.audio-loader {
+  background: rgba(255, 255, 255, 0.05);
+  border-radius: 12px;
+  padding: 20px;
+  border: 1px solid rgba(255, 255, 255, 0.1);
+}
+
+.audio-loader h2 {
+  margin: 0 0 15px 0;
+  color: #4CAF50;
+  font-size: 18px;
+}
+
+.loader-controls {
+  display: flex;
+  gap: 10px;
+  align-items: center;
+  flex-wrap: wrap;
+}
+
+.url-input {
+  flex: 1;
+  min-width: 200px;
+  padding: 10px 15px;
+  border: 1px solid rgba(255, 255, 255, 0.2);
+  border-radius: 6px;
+  background: rgba(255, 255, 255, 0.1);
+  color: white;
+  font-size: 14px;
+}
+
+.url-input:focus {
+  outline: none;
+  border-color: #4CAF50;
+  background: rgba(255, 255, 255, 0.15);
+}
+
+.url-input::placeholder {
+  color: rgba(255, 255, 255, 0.5);
+}
+
+.load-btn,
+.demo-btn {
+  background: linear-gradient(135deg, #4CAF50, #45a049);
+  border: none;
+  border-radius: 6px;
+  color: white;
+  padding: 10px 20px;
+  font-size: 14px;
+  font-weight: 600;
+  cursor: pointer;
+  transition: all 0.3s ease;
+}
+
+.load-btn:hover,
+.demo-btn:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 4px 15px rgba(76, 175, 80, 0.3);
+}
+
+.error-message {
+  margin-top: 10px;
+  padding: 10px 15px;
+  background: rgba(244, 67, 54, 0.1);
+  border: 1px solid #f44336;
+  border-radius: 6px;
+  color: #ff6b6b;
+  font-size: 14px;
+}
+
+/* Timeline Controls */
+.timeline-controls {
+  background: rgba(255, 255, 255, 0.05);
+  border-bottom: 1px solid rgba(255, 255, 255, 0.1);
+  padding: 15px 20px;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 15px;
+  flex-shrink: 0;
+}
+
+.timeline-info h3 {
+  margin: 0 0 10px 0;
+  color: #4CAF50;
+  font-size: 18px;
+}
+
+.timeline-stats {
+  display: flex;
+  gap: 15px;
+  flex-wrap: wrap;
+}
+
+.timeline-stats span {
+  background: rgba(76, 175, 80, 0.2);
+  color: #4CAF50;
+  padding: 4px 8px;
+  border-radius: 12px;
+  font-size: 12px;
+  font-weight: 600;
+}
+
+.timeline-actions {
+  display: flex;
+  gap: 10px;
+  flex-wrap: wrap;
+}
+
+.add-track-btn,
+.zoom-btn {
+  background: rgba(255, 255, 255, 0.1);
+  border: 1px solid rgba(255, 255, 255, 0.2);
+  border-radius: 6px;
+  color: #ccc;
+  padding: 8px 16px;
+  font-size: 14px;
+  cursor: pointer;
+  transition: all 0.3s ease;
+}
+
+.add-track-btn:hover,
+.zoom-btn:hover {
+  background: rgba(76, 175, 80, 0.2);
+  border-color: #4CAF50;
+  color: #4CAF50;
+}
+
+.daw-content {
+  background: rgba(255, 255, 255, 0.05);
+  flex: 1;
+  overflow: hidden;
+  min-height: 0;
+}
+
+/* Transport Section */
+.transport-section {
+  background: rgba(255, 255, 255, 0.05);
+  border-radius: 12px;
+  padding: 20px;
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  margin-bottom: 20px;
+}
+
+.transport-section h3 {
+  margin: 0 0 10px 0;
+  color: #4CAF50;
+  font-size: 18px;
+  text-align: center;
+}
+
+/* Timeline Controls */
+.timeline-controls {
+  background: rgba(255, 255, 255, 0.05);
+  border-bottom: 1px solid rgba(255, 255, 255, 0.1);
+  padding: 15px 20px;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 15px;
+  flex-shrink: 0;
+}
+
+.timeline-info h3 {
+  margin: 0 0 10px 0;
+  color: #4CAF50;
+  font-size: 18px;
+}
+
+.timeline-stats {
+  display: flex;
+  gap: 15px;
+  flex-wrap: wrap;
+}
+
+.timeline-stats span {
+  background: rgba(76, 175, 80, 0.2);
+  color: #4CAF50;
+  padding: 4px 8px;
+  border-radius: 12px;
+  font-size: 12px;
+  font-weight: 600;
+}
+
+.timeline-actions {
+  display: flex;
+  gap: 10px;
+  flex-wrap: wrap;
+}
+
+.add-track-btn,
+.zoom-btn {
+  background: rgba(255, 255, 255, 0.1);
+  border: 1px solid rgba(255, 255, 255, 0.2);
+  border-radius: 6px;
+  color: #ccc;
+  padding: 8px 16px;
+  font-size: 14px;
+  cursor: pointer;
+  transition: all 0.3s ease;
+}
+
+.add-track-btn:hover,
+.zoom-btn:hover {
+  background: rgba(76, 175, 80, 0.2);
+  border-color: #4CAF50;
+  color: #4CAF50;
+}
+
+/* DAW Content */
+.daw-content {
+  background: rgba(255, 255, 255, 0.05);
+  flex: 1;
+  overflow: hidden;
+  min-height: 0;
+}
+
+/* Footer */
+.daw-footer {
+  background: rgba(255, 255, 255, 0.05);
+  padding: 10px 20px;
+  text-align: center;
+  border-top: 1px solid rgba(255, 255, 255, 0.1);
+  flex-shrink: 0;
+}
+
+.daw-footer p {
+  margin: 5px 0;
+  color: #888;
+  font-size: 14px;
+}
+
+/* Loading State */
+.daw-interface.loading {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  min-height: 100vh;
+}
+
+.loading-content {
+  text-align: center;
+  padding: 40px;
+}
+
+.loading-spinner {
+  font-size: 24px;
+  color: #4CAF50;
+  margin-bottom: 20px;
+}
+
+.loading-content h2 {
+  margin: 0 0 10px 0;
+  color: white;
+}
+
+.loading-content p {
+  color: #ccc;
+  margin: 0;
+}
+
+/* Error State */
+.daw-interface.error {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  min-height: 100vh;
+}
+
+.error-content {
+  text-align: center;
+  padding: 40px;
+  background: rgba(244, 67, 54, 0.1);
+  border-radius: 12px;
+  border: 1px solid #f44336;
+}
+
+.error-content h2 {
+  margin: 0 0 10px 0;
+  color: #ff6b6b;
+}
+
+.error-content p {
+  margin: 0 0 20px 0;
+  color: #ff6b6b;
+}
+
+.retry-btn {
+  background: linear-gradient(135deg, #4CAF50, #45a049);
+  border: none;
+  border-radius: 6px;
+  color: white;
+  padding: 12px 24px;
+  font-size: 16px;
+  font-weight: 600;
+  cursor: pointer;
+  transition: all 0.3s ease;
+}
+
+.retry-btn:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 4px 15px rgba(76, 175, 80, 0.3);
+}
+
+/* Responsive Design */
+@media (max-width: 768px) {
+  .header-content {
+    flex-direction: column;
+    gap: 15px;
+    text-align: center;
+  }
+  
+  .daw-header h1 {
+    font-size: 24px;
+  }
+  
+  .main-layout {
+    flex-direction: column;
+  }
+  
+  .timeline-controls {
+    flex-direction: column;
+    align-items: stretch;
+    gap: 15px;
+  }
+  
+  .timeline-stats {
+    justify-content: center;
+  }
+  
+  .timeline-actions {
+    justify-content: center;
+  }
+  
+  .loader-controls {
+    flex-direction: column;
+    align-items: stretch;
+  }
+  
+  .daw-main {
+    padding: 10px;
+  }
+}
