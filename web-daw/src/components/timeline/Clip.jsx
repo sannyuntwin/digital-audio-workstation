@@ -4,7 +4,7 @@
  */
 
 import React, { useRef } from 'react';
-import './Clip.css';
+import '../../index.css';
 
 const Clip = ({ 
   clip, 
@@ -43,6 +43,44 @@ const Clip = ({
   const handleClick = (e) => {
     e.stopPropagation();
     onSelect?.(clip.id);
+  };
+
+  const handleResizeStart = (e, direction) => {
+    e.stopPropagation();
+    e.preventDefault();
+    
+    const startX = e.clientX;
+    const startWidth = clipWidth;
+    const startTime = clip.startTime;
+    
+    const handleMouseMove = (moveEvent) => {
+      const deltaX = moveEvent.clientX - startX;
+      const deltaTime = deltaX / pixelsPerSecond;
+      
+      if (direction === 'left') {
+        // Resize from left - change start time and duration
+        const newStartTime = Math.max(0, startTime + deltaTime);
+        const newDuration = startWidth / pixelsPerSecond - deltaTime;
+        
+        if (newDuration > 0.1) { // Minimum duration
+          // TODO: Update clip with new start time and duration
+          console.log('Resize left:', { newStartTime, newDuration });
+        }
+      } else {
+        // Resize from right - change duration only
+        const newDuration = Math.max(0.1, startWidth / pixelsPerSecond + deltaTime);
+        // TODO: Update clip with new duration
+        console.log('Resize right:', { newDuration });
+      }
+    };
+    
+    const handleMouseUp = () => {
+      document.removeEventListener('mousemove', handleMouseMove);
+      document.removeEventListener('mouseup', handleMouseUp);
+    };
+    
+    document.addEventListener('mousemove', handleMouseMove);
+    document.addEventListener('mouseup', handleMouseUp);
   };
 
   const getClipIcon = () => {
@@ -119,8 +157,8 @@ const Clip = ({
         )}
       </div>
 
-      <div className="clip-handle left" />
-      <div className="clip-handle right" />
+      <div className="clip-handle left" onMouseDown={(e) => handleResizeStart(e, 'left')} />
+      <div className="clip-handle right" onMouseDown={(e) => handleResizeStart(e, 'right')} />
     </div>
   );
 };

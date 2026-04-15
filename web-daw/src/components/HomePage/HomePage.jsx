@@ -4,7 +4,7 @@
  */
 
 import React, { useState, useEffect, useCallback } from 'react';
-import './HomePage.css';
+import '../../index.css';
 import apiService from '../../services/apiService';
 
 const HomePage = ({ onEnterDAW }) => {

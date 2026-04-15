@@ -1,5 +1,5 @@
 import React from 'react';
-import './Track.css';
+import '../index.css';
 
 const Track = ({ track, onTrackSelect, isSelected }) => {
 

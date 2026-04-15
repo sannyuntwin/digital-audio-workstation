@@ -5,45 +5,65 @@
 
 import React from 'react';
 import { BrowserRouter as Router, Routes, Route, Navigate } from 'react-router-dom';
-import './App.css';
+import './index.css';
+
+// Import auth context
+import { AuthProvider } from './contexts/AuthContext';
 
 // Import page components
 import LandingPage from './pages/LandingPage';
 import ProjectsPage from './pages/ProjectsPage';
 import DAWInterfacePage from './pages/DAWInterfacePage';
+import LoginPage from './pages/LoginPage';
+import RegisterPage from './pages/RegisterPage';
 
-// Import core modules
-function App() {
-  // Create a wrapper component to handle project navigation
-  const ProjectPageWrapper = () => {
-    const handleEnterDAW = (project) => {
-      // Navigate to DAW interface with project data
-      // Store project data in localStorage or context for the DAW page to access
-      localStorage.setItem('currentProject', JSON.stringify(project));
-      window.location.href = '/daw-interface';
-    };
+// Import protected route component
+import ProtectedRoute from './components/ProtectedRoute';
 
-    return <ProjectsPage onEnterDAW={handleEnterDAW} />;
-  };
-
+// App content with routes
+function AppContent() {
   return (
-    <Router>
-      <div className="app">
-        <Routes>
-          {/* Landing Page - Marketing and overview */}
-          <Route path="/" element={<LandingPage />} />
-          
-          {/* Projects Page - Show user projects */}
-          <Route path="/projects" element={<ProjectPageWrapper />} />
-          
-          {/* DAW Interface - Main audio production workspace */}
-          <Route path="/daw-interface" element={<DAWInterfacePage />} />
-          
-          {/* Redirect any unknown routes to landing page */}
-          <Route path="*" element={<Navigate to="/" replace />} />
-        </Routes>
-      </div>
-    </Router>
+    <Routes>
+      {/* Public Routes */}
+      <Route path="/" element={<LandingPage />} />
+      <Route path="/login" element={<LoginPage />} />
+      <Route path="/register" element={<RegisterPage />} />
+      
+      {/* Protected Routes */}
+      <Route path="/projects" element={
+        <ProtectedRoute>
+          <ProjectsPage />
+        </ProtectedRoute>
+      } />
+      
+      <Route path="/daw/:projectId" element={
+        <ProtectedRoute>
+          <DAWInterfacePage />
+        </ProtectedRoute>
+      } />
+      
+      <Route path="/daw" element={
+        <ProtectedRoute>
+          <DAWInterfacePage />
+        </ProtectedRoute>
+      } />
+      
+      {/* Redirect any unknown routes to landing page */}
+      <Route path="*" element={<Navigate to="/" replace />} />
+    </Routes>
+  );
+}
+
+// Main App component with auth provider
+function App() {
+  return (
+    <AuthProvider>
+      <Router>
+        <div className="app">
+          <AppContent />
+        </div>
+      </Router>
+    </AuthProvider>
   );
 }
 

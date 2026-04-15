@@ -1,6 +1,6 @@
 import React from 'react';
 import Track from './Track';
-import './TrackArea.css';
+import '../index.css';
 
 const TrackArea = ({ tracks, selectedTrackId, onTrackSelect }) => {
   return (

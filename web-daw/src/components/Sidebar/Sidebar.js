@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import './Sidebar.css';
+import '../../index.css';
 
 const Sidebar = ({ 
   tracks = [], 
@@ -28,7 +28,7 @@ const Sidebar = ({
     return (
       <div className={`channel-strip ${isMaster ? 'master' : ''}`}>
         <div className="strip-header">
-          <button className="setting-btn">Setting</button>
+          <button className="setting-btn" onClick={() => alert('Track Settings:\n• Track Name\n• Color\n• Input/Output\n• Recording Settings\n• Automation')}>Setting</button>
           <div className="eq-thumbnail">
             <svg viewBox="0 0 40 20">
               <path d="M0,10 Q10,2 20,10 T40,10" fill="none" stroke="#5bc4ff" strokeWidth="1" />
@@ -37,38 +37,53 @@ const Sidebar = ({
         </div>
 
         <div className="strip-slots">
-          {!isMaster && <div className="slot midi-fx">MIDI FX</div>}
-          <div className="slot instrument">{isMaster ? '' : 'Kontakt 5'}</div>
-          <div className="slot audio-fx active">Channel EQ</div>
-          <div className="slot audio-fx active">Compressor</div>
-          <div className="slot audio-fx">FF Pro-MB</div>
-          <div className="slot audio-fx">CLA Unplug</div>
-          <div className="slot audio-fx">FF Simplon</div>
-          <div className="slot audio-fx">Tape Delay</div>
-          <div className="slot audio-fx empty"></div>
-          <div className="slot send">Send</div>
-          <div className="slot bus">Bus 12</div>
-          <div className="slot output">{isMaster ? 'Stereo Out' : 'Stereo Out'}</div>
-          <div className="slot group">Group</div>
-          <div className="slot automation">Read</div>
+          {!isMaster && <div className="slot midi-fx" onClick={() => alert('MIDI FX Plugin Slot')}>MIDI FX</div>}
+          <div className="slot instrument" onClick={() => !isMaster && alert('Instrument Plugin Slot')}>{isMaster ? '' : 'Kontakt 5'}</div>
+          <div className="slot audio-fx active" onClick={() => alert('Channel EQ Plugin')}>Channel EQ</div>
+          <div className="slot audio-fx active" onClick={() => alert('Compressor Plugin')}>Compressor</div>
+          <div className="slot audio-fx" onClick={() => alert('FF Pro-MB Plugin')}>FF Pro-MB</div>
+          <div className="slot audio-fx" onClick={() => alert('CLA Unplug Plugin')}>CLA Unplug</div>
+          <div className="slot audio-fx" onClick={() => alert('FF Simplon Plugin')}>FF Simplon</div>
+          <div className="slot audio-fx" onClick={() => alert('Tape Delay Plugin')}>Tape Delay</div>
+          <div className="slot audio-fx empty" onClick={() => alert('Add Audio FX Plugin')}></div>
+          <div className="slot send" onClick={() => alert('Send Effects')}>Send</div>
+          <div className="slot bus" onClick={() => alert('Bus Routing')}>Bus 12</div>
+          <div className="slot output" onClick={() => alert('Output Routing')}>{isMaster ? 'Stereo Out' : 'Stereo Out'}</div>
+          <div className="slot group" onClick={() => alert('Track Grouping')}>Group</div>
+          <div className="slot automation" onClick={() => alert('Automation Mode')}>Read</div>
         </div>
 
         <div className="strip-controls">
           <div className="pan-section">
-            <span className="pan-label l">L</span>
-            <div className="pan-knob-container">
-              <div className="pan-knob-logic">
-                <div className="pan-pos" style={{ transform: `rotate(${pan * 135}deg)` }}></div>
+            <div className="pan-knob-large" onClick={(e) => {
+              const rect = e.currentTarget.getBoundingClientRect();
+              const centerY = rect.top + rect.height / 2;
+              const angle = Math.atan2(e.clientY - centerY, e.clientX - rect.left);
+              const normalizedAngle = (angle + Math.PI) / (2 * Math.PI);
+              const newPan = (normalizedAngle - 0.5) * 2;
+              handleControlChange('pan', Math.max(-1, Math.min(1, newPan)));
+            }}>
+              <div className="pan-knob-logic-large">
+                <div className="pan-pos-large" style={{ transform: `rotate(${pan * 135}deg)` }}></div>
+              </div>
+              <div className="pan-readout">
+                 <span className="pan-label l">L</span>
+                 <span className="pan-value">{pan === 0 ? 'C' : (pan < 0 ? 'L' + Math.abs(Math.round(pan * 64)) : 'R' + Math.round(pan * 63))}</span>
+                 <span className="pan-label r">R</span>
               </div>
             </div>
-            <span className="pan-label r">R</span>
           </div>
 
           <div className="fader-section">
             <div className="fader-db-scale">
               <span>0</span><span>6</span><span>12</span><span>18</span><span>24</span><span>30</span>
             </div>
-            <div className="fader-container">
+            <div className="fader-container" onClick={(e) => {
+              const rect = e.currentTarget.getBoundingClientRect();
+              const y = rect.bottom - e.clientY;
+              const newVolume = Math.max(0, Math.min(1.5, (y / rect.height) * 1.5));
+              handleControlChange('volume', newVolume);
+            }}>
               <div className="fader-track">
                 <div className="fader-handle" style={{ bottom: `${(vol / 1.5) * 100}%` }}></div>
               </div>

@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import './Transport.css';
+import '../index.css';
 
 const Transport = ({ isPlaying, onPlay, onStop, onRecord, bpm, onBpmChange }) => {
   const [isRecording, setIsRecording] = useState(false);

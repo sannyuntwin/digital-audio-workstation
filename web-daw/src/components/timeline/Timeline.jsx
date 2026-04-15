@@ -6,7 +6,7 @@
 import React, { useRef, useEffect, useState, useCallback } from 'react';
 import Track from './Track';
 import { getProjectStore } from '../../store/projectStore';
-import './Timeline.css';
+import '../../index.css';
 
 const Timeline = ({ 
   tracks = [], 
@@ -16,13 +16,19 @@ const Timeline = ({
   onClipMove,
   onClipSelect,
   selectedClipId = null,
+  selectedTrackId = null,
+  onTrackSelect,
   bpm = 120,
   onTrackUpdate,
   onTrackAdd,
   onTrackDelete,
   onFileDrop,
   onSplitClip,
-  onSeek
+  onSeek,
+  onToggleGlobalTracks,
+  onClearSolo,
+  showGlobalTracks = false,
+  onReorderTrack
 }) => {
   const timelineRef = useRef(null);
   const [scrollPosition, setScrollPosition] = useState({ x: 0, y: 0 });
@@ -31,9 +37,12 @@ const Timeline = ({
   const pixelsPerBeat = (pixelsPerSecond * 60) / bpm;
   const pixelsPerBar = pixelsPerBeat * 4;
   
+  const trackHeaderWidth = 160; // Narrower header to match Logic and remove empty space
   const trackHeight = 80; // Taller tracks like Logic
   const timeRulerHeight = 40;
-  const trackHeaderWidth = 250;
+  
+  // Adjusted timeline start offset to ensure Bar 1 aligns perfectly with header border
+  const timelineStartOffset = 0;
 
   const playheadTriangleRef = useRef(null);
   const playheadLineRef = useRef(null);
@@ -48,14 +57,14 @@ const Timeline = ({
 
   const generateTimeMarkers = useCallback(() => {
     const markers = [];
-    const totalBars = 100; // Show 100 bars for now
+    const totalBars = 129;
     
     for (let i = 0; i < totalBars; i++) {
-      const position = i * pixelsPerBar;
+      const position = i * pixelsPerBar + timelineStartOffset;
       markers.push({
         id: `bar-${i + 1}`,
         position,
-        label: i + 1,
+        label: `${i + 1}`,
         isMajor: true
       });
       
@@ -71,7 +80,7 @@ const Timeline = ({
     }
     
     return markers;
-  }, [pixelsPerBar, pixelsPerBeat]);
+  }, [pixelsPerBar, pixelsPerBeat, timelineStartOffset]);
 
   // High-performance playhead animation subscription
   useEffect(() => {
@@ -123,35 +132,12 @@ const Timeline = ({
 
   return (
     <div className="timeline" ref={timelineRef}>
-      {/* 1. Arrangement Sub-Toolbar */}
-      <div className="arrangement-toolbar">
-        <div className="toolbar-left">
-          <div className="toolbar-menu">
-            <span>Edit</span>
-            <span>Functions</span>
-            <span>View</span>
-          </div>
-          <div className="toolbar-spacer"></div>
-          <div className="toolbar-controls">
-            <button className="tb-btn" onClick={onSplitClip} title="Split clip at playhead (Ctrl+E)">✂ Split</button>
-            <button className="tb-btn">Snap: Smart</button>
-            <button className="tb-btn">Drag: No Overlap</button>
-          </div>
-        </div>
-        <div className="toolbar-right">
-          <div className="zoom-controls">
-             <div className="zoom-slider h"></div>
-             <div className="zoom-slider v"></div>
-          </div>
-        </div>
-      </div>
-
       <div className="time-ruler" style={{ height: `${timeRulerHeight}px` }}>
         <div className="time-ruler-track-header" style={{ width: `${trackHeaderWidth}px` }}>
           <div className="track-add-btns">
-            <button className="add-btn" onClick={() => onTrackAdd?.('audio')}>+</button>
-            <button className="add-btn">⬇</button>
-            <button className="add-btn">S</button>
+            <button className="add-btn" title="Add Track" onClick={() => onTrackAdd?.('audio')}>+</button>
+            <button className={`add-btn ${showGlobalTracks ? 'active' : ''}`} title="Global Tracks" onClick={onToggleGlobalTracks}>⬇</button>
+            <button className="add-btn" title="Clear Solo" onClick={onClearSolo}>S</button>
           </div>
         </div>
         
@@ -184,14 +170,34 @@ const Timeline = ({
         </div>
       </div>
 
+      {showGlobalTracks && (
+        <div className="global-tracks-area">
+          <div className="global-track">
+            <div className="global-track-header" style={{ width: `${trackHeaderWidth}px` }}>Marker</div>
+            <div className="global-track-content">
+               {/* Marker content here */}
+               <div className="marker-item" style={{ left: '0px' }}>Start</div>
+            </div>
+          </div>
+          <div className="global-track">
+            <div className="global-track-header" style={{ width: `${trackHeaderWidth}px` }}>Tempo</div>
+            <div className="global-track-content">
+               <div className="tempo-line" style={{ top: '50%', width: '100%' }}></div>
+               <div className="tempo-text" style={{ left: '10px', top: '5px' }}>{bpm}</div>
+            </div>
+          </div>
+        </div>
+      )}
+
       <div className="tracks-container" onScroll={handleScroll}>
         <div className="tracks-list">
-          {tracks.map((track) => (
+          {tracks.map((track, index) => (
             <Track
               key={track.id}
               track={track}
+              trackIndex={index}
               clips={clips.filter(clip => clip.trackId === track.id)}
-              trackHeight={trackHeight}
+              trackHeight={track.height || trackHeight}
               trackHeaderWidth={trackHeaderWidth}
               pixelsPerSecond={pixelsPerSecond}
               timeToPixels={timeToPixels}
@@ -201,9 +207,13 @@ const Timeline = ({
               onClipDrop={(cid, tid, time) => onClipMove?.(cid, tid, time)}
               onClipSelect={onClipSelect}
               selectedClipId={selectedClipId}
+              isSelected={selectedTrackId === track.id}
+              onSelect={onTrackSelect}
               onTrackUpdate={onTrackUpdate}
               onTrackDelete={onTrackDelete}
               onFileDrop={onFileDrop}
+              onHeightChange={(tid, h) => onTrackUpdate?.(tid, { height: h })}
+              onReorderTrack={onReorderTrack}
             />
           ))}
         </div>

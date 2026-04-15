@@ -10,12 +10,21 @@ class ApiService {
     this.baseURL = API_BASE_URL;
   }
 
+  // Get auth token
+  getToken() {
+    return localStorage.getItem('token');
+  }
+
   // Generic request method
   async request(endpoint, options = {}) {
     const url = `${this.baseURL}${endpoint}`;
+    const token = this.getToken();
+    
     const config = {
       headers: {
         'Content-Type': 'application/json',
+        ...(token && { 'Authorization': `Bearer ${token}` }),
+        ...(options.headers || {})
       },
       ...options,
     };
@@ -25,7 +34,13 @@ class ApiService {
       const data = await response.json();
       
       if (!response.ok) {
-        throw new Error(data.error || `HTTP error! status: ${response.status}`);
+        // Handle 401 Unauthorized - token expired or invalid
+        if (response.status === 401) {
+          localStorage.removeItem('token');
+          localStorage.removeItem('user');
+          window.location.href = '/login';
+        }
+        throw new Error(data.error || data.message || `HTTP error! status: ${response.status}`);
       }
       
       return data;

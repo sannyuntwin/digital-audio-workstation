@@ -4,7 +4,7 @@
  */
 
 import React, { useState, useCallback } from 'react';
-import './AudioUploader.css';
+import '../index.css';
 
 const AudioUploader = ({ onAudioUpload }) => {
   const [isDragging, setIsDragging] = useState(false);

@@ -19,6 +19,7 @@ const { db, testConnection } = require('./src/config/database');
 // Import routes
 const projectRoutes = require('./src/routes/projects');
 const audioRoutes = require('./src/routes/audio');
+const authRoutes = require('./src/routes/auth');
 
 // Import middleware
 const errorHandler = require('./src/middleware/errorHandler');
@@ -59,6 +60,7 @@ fs.ensureDirSync(path.join(__dirname, 'uploads'));
 // API Routes
 app.use('/api/projects', projectRoutes);
 app.use('/api/audio', audioRoutes);
+app.use('/api/auth', authRoutes);
 
 // Health check endpoint
 app.get('/health', (req, res) => {

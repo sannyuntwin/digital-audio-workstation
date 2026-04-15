@@ -4,11 +4,14 @@
  */
 
 import React, { useState, useEffect, useCallback } from 'react';
-import { Link } from 'react-router-dom';
+import { Link, useNavigate } from 'react-router-dom';
 import apiService from '../services/apiService';
-import './ProjectsPage.css';
+import { useAuth } from '../contexts/AuthContext';
+import '../index.css';
 
 const ProjectsPage = ({ onEnterDAW }) => {
+  const { user, logout } = useAuth();
+  const navigate = useNavigate();
   const [projects, setProjects] = useState([]);
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState(null);
@@ -32,8 +35,9 @@ const ProjectsPage = ({ onEnterDAW }) => {
 
   const handleEnterProject = useCallback((project) => {
     console.log('Entering project:', project.name);
-    onEnterDAW(project);
-  }, [onEnterDAW]);
+    // Navigate to DAW with project ID
+    navigate(`/daw/${project.id}`);
+  }, [navigate]);
 
   // Load projects on component mount
   useEffect(() => {
@@ -70,8 +74,8 @@ const ProjectsPage = ({ onEnterDAW }) => {
       // Clear form
       setNewProjectName('');
       
-      // Auto-enter the new project
-      handleEnterProject(newProject.data);
+      // Navigate to DAW with the new project
+      navigate(`/daw/${newProject.data.id}`);
       
     } catch (err) {
       console.error('Failed to create project:', err);
@@ -79,7 +83,7 @@ const ProjectsPage = ({ onEnterDAW }) => {
     } finally {
       setCreatingProject(false);
     }
-  }, [newProjectName, loadProjects, handleEnterProject]);
+  }, [newProjectName, loadProjects, navigate]);
 
   const deleteProject = useCallback(async (projectId) => {
     if (!window.confirm('Are you sure you want to delete this project?')) {
@@ -114,63 +118,105 @@ const ProjectsPage = ({ onEnterDAW }) => {
     return { trackCount, clipCount };
   };
 
+  const handleLogout = useCallback(() => {
+    logout();
+    navigate('/');
+  }, [logout, navigate]);
+
   return (
     <div className="projects-page">
-      {/* Header */}
-      <header className="projects-header">
-        <div className="header-content">
-          <div className="header-left">
-            <Link to="/" className="back-link">
-              &larr; Back
+      {/* Navigation Header */}
+      <nav className="projects-nav">
+        <div className="nav-content">
+          <div className="nav-brand">
+            <Link to="/" className="brand-link">
+              <span className="brand-icon">Web DAW</span>
             </Link>
-            <h1>My Projects</h1>
           </div>
-          <div className="header-right">
-            <Link to="/" className="home-btn">
-              Home
-            </Link>
-            <Link to="/daw-interface" className="daw-btn">
-              DAW Interface
-            </Link>
+          <div className="nav-actions">
+            <span className="welcome-text">Welcome, {user?.first_name || user?.username}</span>
+            <button onClick={handleLogout} className="nav-btn secondary">
+              Logout
+            </button>
           </div>
         </div>
-      </header>
+      </nav>
 
       {/* Main Content */}
       <main className="projects-main">
-        {/* Create Project Section */}
-        <section className="create-section">
-          <div className="create-card">
-            <h2>Create New Project</h2>
-            <div className="create-form">
-              <input
-                type="text"
-                placeholder="Enter project name..."
-                value={newProjectName}
-                onChange={(e) => setNewProjectName(e.target.value)}
-                onKeyPress={(e) => e.key === 'Enter' && createProject()}
-                className="project-name-input"
-              />
-              <button 
-                onClick={createProject}
-                disabled={creatingProject || !newProjectName.trim()}
-                className="create-btn"
-              >
-                {creatingProject ? 'Creating...' : 'Create Project'}
-              </button>
-            </div>
-            {error && (
-              <div className="error-message">
-                {error}
+        {/* Hero Section */}
+        <section className="projects-hero">
+          <div className="hero-content">
+            <div className="hero-text">
+              <h1 className="hero-title">My Projects</h1>
+              <p className="hero-subtitle">Create, manage, and collaborate on your music productions</p>
+              <div className="hero-stats">
+                <div className="stat">
+                  <span className="stat-number">{projects.length}</span>
+                  <span className="stat-label">Projects</span>
+                </div>
+                <div className="stat">
+                  <span className="stat-number">{projects.reduce((total, p) => total + (p.tracks?.length || 0), 0)}</span>
+                  <span className="stat-label">Tracks</span>
+                </div>
+                <div className="stat">
+                  <span className="stat-number">{projects.reduce((total, p) => total + (p.clips?.length || 0), 0)}</span>
+                  <span className="stat-label">Clips</span>
+                </div>
               </div>
-            )}
+            </div>
           </div>
         </section>
 
-        {/* Projects Section */}
+        {/* Create Project Section */}
+        <section className="create-section">
+          <div className="create-card">
+            <div className="create-header">
+              <h2>Create New Project</h2>
+              <p>Start your next musical masterpiece</p>
+            </div>
+            <div className="create-form">
+              <div className="input-group">
+                <input
+                  type="text"
+                  placeholder="Enter project name..."
+                  value={newProjectName}
+                  onChange={(e) => setNewProjectName(e.target.value)}
+                  onKeyPress={(e) => e.key === 'Enter' && createProject()}
+                  className="project-name-input"
+                />
+                <button 
+                  onClick={createProject}
+                  disabled={creatingProject || !newProjectName.trim()}
+                  className="create-btn"
+                >
+                  {creatingProject ? (
+                    <span className="button-content">
+                      <div className="spinner"></div>
+                      Creating...
+                    </span>
+                  ) : (
+                    <span className="button-content">
+                      Create Project
+                      <span className="button-arrow">{'->'}</span>
+                    </span>
+                  )}
+                </button>
+              </div>
+              {error && (
+                <div className="error-message">
+                  <div className="error-icon">!</div>
+                  <span>{error}</span>
+                </div>
+              )}
+            </div>
+          </div>
+        </section>
+
+        {/* Projects Grid */}
         <section className="projects-section">
           <div className="section-header">
-            <h2>Your Projects</h2>
+            <h2 className="section-title">Your Projects</h2>
             <div className="project-count">
               {projects.length} project{projects.length !== 1 ? 's' : ''}
             </div>
@@ -178,12 +224,15 @@ const ProjectsPage = ({ onEnterDAW }) => {
 
           {isLoading ? (
             <div className="loading-state">
-              <div className="loading-spinner">Loading projects...</div>
+              <div className="loading-spinner">
+                <div className="spinner"></div>
+                <p>Loading projects...</p>
+              </div>
             </div>
           ) : projects.length === 0 ? (
-            <div className="empty-state">
+            <div className="empty-projects">
               <div className="empty-icon">No projects yet</div>
-              <h3>No projects yet</h3>
+              <h2>No projects yet</h2>
               <p>Create your first project to get started with music production</p>
               <button 
                 onClick={() => {
@@ -192,7 +241,10 @@ const ProjectsPage = ({ onEnterDAW }) => {
                 }}
                 className="create-first-btn"
               >
-                Create Your First Project
+                <span className="button-content">
+                  Create Your First Project
+                  <span className="button-arrow">{'->'}</span>
+                </span>
               </button>
             </div>
           ) : (
@@ -201,36 +253,56 @@ const ProjectsPage = ({ onEnterDAW }) => {
                 const { trackCount, clipCount } = getProjectStats(project);
                 return (
                   <div key={project.id} className="project-card">
+                    <div className="project-preview">
+                      <div className="preview-tracks">
+                        {[...Array(Math.min(4, trackCount || 1))].map((_, i) => (
+                          <div key={i} className="preview-track"></div>
+                        ))}
+                      </div>
+                      <div className="preview-clips">
+                        {[...Array(Math.min(3, clipCount || 1))].map((_, i) => (
+                          <div key={i} className="preview-clip"></div>
+                        ))}
+                      </div>
+                    </div>
                     <div className="project-info">
                       <h3>{project.name}</h3>
                       <p className="project-description">
-                        {project.description || 'No description'}
+                        {project.description || 'Click to open and start creating'}
                       </p>
                       <div className="project-meta">
+                        <div className="project-stats">
+                          <span className="stat">
+                            <span className="stat-icon">Tracks</span>
+                            {trackCount}
+                          </span>
+                          <span className="stat">
+                            <span className="stat-icon">Clips</span>
+                            {clipCount}
+                          </span>
+                          <span className="stat">
+                            <span className="stat-icon">BPM</span>
+                            {project.bpm || 120}
+                          </span>
+                        </div>
                         <span className="project-date">
                           {formatDate(project.updated_at)}
                         </span>
-                        <div className="project-stats">
-                          <span className="stat">
-                            {trackCount} track{trackCount !== 1 ? 's' : ''}
-                          </span>
-                          <span className="stat">
-                            {clipCount} clip{clipCount !== 1 ? 's' : ''}
-                          </span>
-                        </div>
                       </div>
                     </div>
                     <div className="project-actions">
                       <button 
                         onClick={() => handleEnterProject(project)}
-                        className="enter-btn"
+                        className="project-btn primary"
                       >
-                        Open
+                        <span className="btn-icon">Open</span>
+                        Open Project
                       </button>
                       <button 
                         onClick={() => deleteProject(project.id)}
-                        className="delete-btn"
+                        className="project-btn delete"
                       >
+                        <span className="btn-icon">Delete</span>
                         Delete
                       </button>
                     </div>
@@ -244,7 +316,8 @@ const ProjectsPage = ({ onEnterDAW }) => {
         {/* Quick Actions */}
         <section className="quick-actions">
           <div className="quick-actions-card">
-            <h3>Quick Start</h3>
+            <h3>Quick Start Templates</h3>
+            <p>Get started quickly with these pre-configured project templates</p>
             <div className="quick-actions-grid">
               <button 
                 onClick={() => {
@@ -253,8 +326,11 @@ const ProjectsPage = ({ onEnterDAW }) => {
                 }}
                 className="quick-action-btn"
               >
-                <span className="icon">Demo</span>
-                <span>Quick Demo Project</span>
+                <span className="quick-icon">Demo</span>
+                <div className="quick-content">
+                  <span className="quick-title">Quick Demo</span>
+                  <span className="quick-desc">Test the DAW features</span>
+                </div>
               </button>
               <button 
                 onClick={() => {
@@ -263,8 +339,11 @@ const ProjectsPage = ({ onEnterDAW }) => {
                 }}
                 className="quick-action-btn"
               >
-                <span className="icon">Podcast</span>
-                <span>Podcast Episode</span>
+                <span className="quick-icon">Podcast</span>
+                <div className="quick-content">
+                  <span className="quick-title">Podcast Episode</span>
+                  <span className="quick-desc">Perfect for voice recordings</span>
+                </div>
               </button>
               <button 
                 onClick={() => {
@@ -273,8 +352,11 @@ const ProjectsPage = ({ onEnterDAW }) => {
                 }}
                 className="quick-action-btn"
               >
-                <span className="icon">Music</span>
-                <span>Music Production</span>
+                <span className="quick-icon">Music</span>
+                <div className="quick-content">
+                  <span className="quick-title">Music Production</span>
+                  <span className="quick-desc">Multi-track music project</span>
+                </div>
               </button>
               <button 
                 onClick={() => {
@@ -283,19 +365,16 @@ const ProjectsPage = ({ onEnterDAW }) => {
                 }}
                 className="quick-action-btn"
               >
-                <span className="icon">Voice</span>
-                <span>Voice Recording</span>
+                <span className="quick-icon">Voice</span>
+                <div className="quick-content">
+                  <span className="quick-title">Voice Recording</span>
+                  <span className="quick-desc">Simple voice setup</span>
+                </div>
               </button>
             </div>
           </div>
         </section>
       </main>
-
-      {/* Footer */}
-      <footer className="projects-footer">
-        <p>Web DAW - Professional Digital Audio Workstation</p>
-        <p>Built with React, Web Audio API, and PostgreSQL</p>
-      </footer>
     </div>
   );
 };

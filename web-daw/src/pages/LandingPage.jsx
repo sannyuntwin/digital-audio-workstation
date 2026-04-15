@@ -5,35 +5,102 @@
 
 import React from 'react';
 import { Link } from 'react-router-dom';
-import './LandingPage.css';
+import { useAuth } from '../contexts/AuthContext';
+import '../index.css';
 
 const LandingPage = () => {
+  const { isAuthenticated, user } = useAuth();
+
   return (
     <div className="landing-page">
+      {/* Navigation Header */}
+      <nav className="landing-nav">
+        <div className="nav-content">
+          <div className="nav-brand">
+            <h1>Web DAW</h1>
+          </div>
+          <div className="nav-actions">
+            {isAuthenticated ? (
+              <>
+                <span className="welcome-text">Welcome, {user?.first_name || user?.username}</span>
+                <Link to="/projects" className="nav-btn primary">
+                  My Projects
+                </Link>
+              </>
+            ) : (
+              <>
+                <Link to="/login" className="nav-btn secondary">
+                  Sign In
+                </Link>
+                <Link to="/register" className="nav-btn primary">
+                  Sign Up
+                </Link>
+              </>
+            )}
+          </div>
+        </div>
+      </nav>
+
       {/* Hero Section */}
       <section className="hero">
         <div className="hero-content">
           <div className="hero-text">
+            <div className="hero-badge">
+              <span>Professional Audio Production</span>
+            </div>
             <h1 className="hero-title">Web DAW</h1>
             <p className="hero-subtitle">Professional Digital Audio Workstation in your browser</p>
+            <div className="hero-stats">
+              <div className="stat">
+                <span className="stat-number">10K+</span>
+                <span className="stat-label">Active Users</span>
+              </div>
+              <div className="stat">
+                <span className="stat-number">50+</span>
+                <span className="stat-label">Audio Effects</span>
+              </div>
+              <div className="stat">
+                <span className="stat-number">Unlimited</span>
+                <span className="stat-label">Projects</span>
+              </div>
+            </div>
             <div className="hero-cta">
-              <Link to="/projects" className="cta-primary">
-                Start Creating
-              </Link>
-              <Link to="/daw-interface" className="cta-secondary">
-                Try Demo
-              </Link>
+              {isAuthenticated ? (
+                <Link to="/projects" className="cta-primary">
+                  Go to My Projects
+                </Link>
+              ) : (
+                <>
+                  <Link to="/register" className="cta-primary">
+                    Get Started Free
+                  </Link>
+                  <Link to="/login" className="cta-secondary">
+                    Sign In
+                  </Link>
+                </>
+              )}
             </div>
           </div>
         </div>
         <div className="hero-visual">
           <div className="daw-interface-preview">
+            <div className="preview-header">
+              <div className="preview-controls">
+                <div className="preview-btn play"></div>
+                <div className="preview-btn stop"></div>
+                <div className="preview-btn record"></div>
+              </div>
+              <div className="preview-time">00:00:00</div>
+            </div>
             <div className="preview-timeline">
+              <div className="preview-track"></div>
               <div className="preview-track"></div>
               <div className="preview-track"></div>
               <div className="preview-track"></div>
             </div>
             <div className="preview-clips">
+              <div className="preview-clip"></div>
+              <div className="preview-clip"></div>
               <div className="preview-clip"></div>
               <div className="preview-clip"></div>
               <div className="preview-clip"></div>

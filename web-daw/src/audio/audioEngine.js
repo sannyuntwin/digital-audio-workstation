@@ -143,12 +143,23 @@ class AudioEngine {
   /**
    * Start or resume audio playback for specific tracks and clips
    */
-  play(offset = 0, tracksToPlay = [], clipsToPlay = []) {
+  play(offset = 0, tracks = [], clips = []) {
     if (!this.audioContext) throw new Error('Audio engine not initialized');
 
     this.stop();
 
     const currentTime = this.audioContext.currentTime;
+
+    // 1. Determine which tracks are audible (Solo logic)
+    const hasSolo = tracks.some(t => t.isSolo);
+    const audibleTrackIds = new Set(
+      tracks
+        .filter(t => (hasSolo ? t.isSolo : true) && !t.isMuted)
+        .map(t => t.id)
+    );
+
+    // 2. Filter clips belonging to audible tracks
+    const clipsToPlay = clips.filter(clip => audibleTrackIds.has(clip.trackId));
 
     clipsToPlay.forEach(clip => {
       if (clip.type !== 'audio') return;
@@ -167,14 +178,11 @@ class AudioEngine {
       const trackNodes = this.trackNodes.get(clip.trackId);
       if (trackNodes) {
         source.connect(trackNodes.gain);
-        // Track nodes chain is setup in createTrackNodes
       } else {
         source.connect(this.audioContext.destination);
       }
 
       // Calculate tight schedule
-      // if playhead (offset) is before clip: schedule start in the future
-      // if playhead (offset) is inside clip: start immediately, but jump into the clip
       const startDelay = Math.max(0, clip.startTime - offset);
       
       // startOffset = where in the raw buffer this clip starts from (non-destructive trim)
@@ -191,9 +199,8 @@ class AudioEngine {
 
     this.isPlaying = true;
     this.startTime = currentTime - offset;
-    this.pauseTime = 0;
     
-    console.log(`Playback started with ${this.activeSources.length} active audio sources.`);
+    console.log(`Playback started with ${this.activeSources.length} audible sources.`);
   }
 
   /**

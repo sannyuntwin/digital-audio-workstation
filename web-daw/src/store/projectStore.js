@@ -4,6 +4,8 @@
  */
 
 import { useState, useCallback, useEffect } from 'react';
+import apiService from '../services/apiService';
+import { safeJSONParse } from '../utils/storageCleanup';
 
 // Project store singleton
 class ProjectStore {
@@ -19,11 +21,13 @@ class ProjectStore {
       // Project settings
       projectName: 'Untitled Project',
       sampleRate: 44100,
+      currentProjectId: null,
       
       // UI state
       selectedTrackId: null,
       selectedClipId: null,
       zoomLevel: 1.0,
+      showGlobalTracks: false,
       
       // Timeline state
       tracks: [],
@@ -47,15 +51,17 @@ class ProjectStore {
     try {
       const saved = localStorage.getItem('daw_project');
       if (saved) {
-        const parsed = JSON.parse(saved);
-        if (parsed.tracks) this.state.tracks = parsed.tracks;
-        if (parsed.clips) this.state.clips = parsed.clips;
-        if (parsed.bpm) this.state.bpm = parsed.bpm;
-        if (parsed.projectName) this.state.projectName = parsed.projectName;
-        console.log(`💾 Restored project: ${parsed.projectName} (${parsed.tracks?.length || 0} tracks, ${parsed.clips?.length || 0} clips)`);
+        const parsed = safeJSONParse(saved); // Use safeJSONParse utility
+        if (parsed && parsed.tracks) this.state.tracks = parsed.tracks;
+        if (parsed && parsed.clips) this.state.clips = parsed.clips;
+        if (parsed && parsed.bpm) this.state.bpm = parsed.bpm;
+        if (parsed && parsed.projectName) this.state.projectName = parsed.projectName;
+        console.log(`Restored project: ${parsed.projectName} (${parsed.tracks?.length || 0} tracks, ${parsed.clips?.length || 0} clips)`);
       }
     } catch (e) {
       console.warn('Could not restore project from localStorage:', e);
+      // Clear corrupted project data
+      localStorage.removeItem('daw_project');
     }
   }
 
@@ -70,8 +76,41 @@ class ProjectStore {
         clips: this.state.clips.map(c => ({ ...c, peaks: undefined }))
       };
       localStorage.setItem('daw_project', JSON.stringify(toSave));
+      this._saveToDatabase();
     } catch (e) {
       console.warn('Could not save project to localStorage:', e);
+    }
+  }
+
+  /**
+   * Save project to database
+   */
+  async _saveToDatabase() {
+    if (!this.state.currentProjectId) {
+      console.warn('No current project ID - cannot save to database');
+      return;
+    }
+
+    try {
+      const projectData = {
+        name: this.state.projectName,
+        description: '',
+        bpm: this.state.bpm,
+        timeSignature: this.state.timeSignature,
+        tracks: this.state.tracks,
+        clips: this.state.clips,
+        settings: {
+          sampleRate: this.state.sampleRate,
+          zoomLevel: this.state.zoomLevel,
+          showGlobalTracks: this.state.showGlobalTracks
+        }
+      };
+
+      await apiService.updateProject(this.state.currentProjectId, projectData);
+      console.log('Project saved to database:', this.state.projectName);
+    } catch (error) {
+      console.error('Failed to save project to database:', error);
+      // Fallback to localStorage only
     }
   }
 
@@ -120,6 +159,9 @@ class ProjectStore {
    */
   setState(updates) {
     const oldPlaying = this.state.isPlaying;
+    const oldTracks = this.state.tracks;
+    const oldClips = this.state.clips;
+    
     const newState = typeof updates === 'function' 
       ? { ...this.state, ...updates(this.state) }
       : { ...this.state, ...updates };
@@ -128,13 +170,14 @@ class ProjectStore {
 
     // Persist tracks/clips to localStorage on any relevant change
     if (
-      newState.tracks !== (oldPlaying !== undefined ? undefined : null) ||
-      newState.clips !== undefined
+      newState.tracks !== oldTracks ||
+      newState.clips !== oldClips
     ) {
       // Debounce: save on next tick to batch rapid changes
       if (!this._saveTimer) {
         this._saveTimer = setTimeout(() => {
           this._saveToLocalStorage();
+          this._saveToDatabase();
           this._saveTimer = null;
         }, 300);
       }
@@ -206,17 +249,41 @@ class ProjectStore {
     this.setState({ zoomLevel: clampedZoom });
   }
 
+  toggleGlobalTracks() {
+    this.setState(prevState => ({ showGlobalTracks: !prevState.showGlobalTracks }));
+  }
+
+  clearAllSolos() {
+    this.setState(prevState => ({
+      tracks: (prevState.tracks || []).map(track => ({ ...track, isSolo: false }))
+    }));
+  }
+
   // Timeline management
+  reorderTracks(fromIndex, toIndex) {
+    this.setState(prevState => {
+      const tracks = [...(prevState.tracks || [])];
+      const [removed] = tracks.splice(fromIndex, 1);
+      tracks.splice(toIndex, 0, removed);
+      return { tracks };
+    });
+  }
+
   addTrack(track) {
+    const newIndex = (this.state.tracks?.length || 0) + 1;
+    const colors = ['#5bc4ff', '#ff5b5b', '#5bff5b', '#f5ff5b', '#ff5bf5', '#5bffda'];
     const newTrack = {
       id: Date.now() + Math.random(),
-      name: track.name || `Track ${(this.state.tracks?.length || 0) + 1}`,
+      name: track.name || `Track ${newIndex}`,
       type: track.type || 'audio',
+      index: newIndex,
       isMuted: false,
       isSolo: false,
       isArmed: false,
       volume: 1.0,
       pan: 0.0,
+      color: colors[(newIndex - 1) % colors.length],
+      height: 80,
       ...track
     };
     
@@ -230,15 +297,15 @@ class ProjectStore {
   updateTrack(trackId, updates) {
     this.setState(prevState => ({
       tracks: (prevState.tracks || []).map(track =>
-        track.id === trackId ? { ...track, ...updates } : track
+        String(track.id) === String(trackId) ? { ...track, ...updates } : track
       )
     }));
   }
 
   deleteTrack(trackId) {
     this.setState(prevState => ({
-      tracks: (prevState.tracks || []).filter(track => track.id !== trackId),
-      clips: (prevState.clips || []).filter(clip => clip.trackId !== trackId)
+      tracks: (prevState.tracks || []).filter(track => String(track.id) !== String(trackId)),
+      clips: (prevState.clips || []).filter(clip => String(clip.trackId) !== String(trackId))
     }));
   }
 
@@ -264,7 +331,7 @@ class ProjectStore {
   updateClip(clipId, updates) {
     this.setState(prevState => ({
       clips: (prevState.clips || []).map(clip =>
-        clip.id === clipId ? { ...clip, ...updates } : clip
+        String(clip.id) === String(clipId) ? { ...clip, ...updates } : clip
       )
     }));
   }
@@ -274,7 +341,7 @@ class ProjectStore {
    * Returns [leftClipId, rightClipId] or null if invalid.
    */
   splitClip(clipId, splitAtTime) {
-    const clip = (this.state.clips || []).find(c => c.id === clipId);
+    const clip = (this.state.clips || []).find(c => String(c.id) === String(clipId));
     if (!clip) return null;
     
     const splitOffset = splitAtTime - clip.startTime; // seconds into this clip
@@ -283,7 +350,7 @@ class ProjectStore {
     // Shorten the left (original) clip
     this.setState(prevState => ({
       clips: (prevState.clips || []).map(c =>
-        c.id === clipId ? { ...c, duration: splitOffset } : c
+        String(c.id) === String(clipId) ? { ...c, duration: splitOffset } : c
       )
     }));
     
@@ -304,7 +371,7 @@ class ProjectStore {
   moveClip(clipId, newTrackId, newStartTime) {
     this.setState(prevState => ({
       clips: (prevState.clips || []).map(clip =>
-        clip.id === clipId 
+        String(clip.id) === String(clipId) 
           ? { ...clip, trackId: newTrackId, startTime: newStartTime }
           : clip
       )
@@ -313,7 +380,7 @@ class ProjectStore {
 
   deleteClip(clipId) {
     this.setState(prevState => ({
-      clips: (prevState.clips || []).filter(clip => clip.id !== clipId)
+      clips: (prevState.clips || []).filter(clip => String(clip.id) !== String(clipId))
     }));
   }
 
@@ -329,6 +396,9 @@ class ProjectStore {
   // Time tracking for playback
   startTimeUpdates() {
     if (this.timeUpdateInterval) return;
+    
+    // Sync internal playhead to current state before starting
+    this.playheadTime = this.state.currentTime;
     
     let lastTime = performance.now();
     
@@ -348,6 +418,8 @@ class ProjectStore {
     if (this.timeUpdateInterval) {
       clearInterval(this.timeUpdateInterval);
       this.timeUpdateInterval = null;
+      // Sync the playhead back to persistent state when stopping
+      this.setState({ currentTime: this.playheadTime });
     }
   }
 
@@ -434,6 +506,151 @@ class ProjectStore {
   dispose() {
     this.stopTimeUpdates();
     this.listeners.clear();
+    this._saveToDatabase();
+  }
+
+  /**
+   * Load project data from database
+   */
+  async _loadFromDatabase(projectId) {
+    try {
+      const project = await apiService.getProject(projectId);
+      if (project) {
+        this.setState({
+          currentProjectId: projectId,
+          projectName: project.name || 'Untitled Project',
+          bpm: project.bpm || 120,
+          timeSignature: project.timeSignature || { numerator: 4, denominator: 4 },
+          sampleRate: project.settings?.sampleRate || 44100,
+          tracks: project.tracks || [],
+          clips: project.clips || [],
+          zoomLevel: project.settings?.zoomLevel || 1.0,
+          showGlobalTracks: project.settings?.showGlobalTracks || false
+        });
+        
+        console.log(`Loaded project from database: ${project.name}`);
+      }
+    } catch (error) {
+      console.error('Failed to load project from database:', error);
+      throw error;
+    }
+  }
+
+  /**
+   * Set current project and load from database
+   */
+  async setCurrentProject(projectId) {
+    if (projectId && projectId !== this.state.currentProjectId) {
+      await this._loadFromDatabase(projectId);
+    }
+  }
+
+  /**
+   * Get current project ID
+   */
+  getCurrentProjectId() {
+    return this.state.currentProjectId;
+  }
+
+  /**
+   * Create new project via API
+   */
+  async createNewProject(projectName) {
+    try {
+      const projectData = {
+        name: projectName || 'Untitled Project',
+        description: '',
+        bpm: this.state.bpm,
+        timeSignature: this.state.timeSignature,
+        tracks: this.state.tracks,
+        clips: this.state.clips,
+        settings: {
+          sampleRate: this.state.sampleRate,
+          zoomLevel: this.state.zoomLevel,
+          showGlobalTracks: this.state.showGlobalTracks
+        }
+      };
+
+      const project = await apiService.createProject(projectData);
+      
+      if (project && project.id) {
+        // Set current project ID immediately to ensure saves work
+        this.state.currentProjectId = project.id;
+        this.setState({ currentProjectId: project.id });
+        console.log(`Created new project: ${project.name} (ID: ${project.id})`);
+      }
+      
+      return project;
+    } catch (error) {
+      console.error('Failed to create new project:', error);
+      throw error;
+    }
+  }
+
+  /**
+   * Create new project and set it as current
+   */
+  async createAndSetProject(projectName) {
+    const project = await this.createNewProject(projectName);
+    return project;
+  }
+
+  /**
+   * Update current project
+   */
+  async updateCurrentProject(updates) {
+    if (this.state.currentProjectId) {
+      const projectData = {
+        ...updates,
+        id: this.state.currentProjectId
+      };
+      await apiService.updateProject(this.state.currentProjectId, projectData);
+      
+      // Update local state
+      this.setState(updates);
+    }
+  }
+
+  /**
+   * Delete current project
+   */
+  async deleteCurrentProject() {
+    if (this.state.currentProjectId) {
+      await apiService.deleteProject(this.state.currentProjectId);
+      
+      // Reset to default state
+      this.state = {
+        // Transport state
+        isPlaying: false,
+        isRecording: false,
+        currentTime: 0,
+        bpm: 120,
+        timeSignature: { numerator: 4, denominator: 4 },
+        
+        // Project settings
+        projectName: 'Untitled Project',
+        sampleRate: 44100,
+        currentProjectId: null,
+        
+        // UI state
+        selectedTrackId: null,
+        selectedClipId: null,
+        zoomLevel: 1.0,
+        showGlobalTracks: false,
+        
+        // Timeline state
+        tracks: [],
+        clips: [],
+        
+        // Audio engine state
+        isAudioEngineInitialized: false
+      };
+      
+      // Clear localStorage
+      localStorage.removeItem('daw_project');
+      
+      this.notify();
+    }
   }
 }
 

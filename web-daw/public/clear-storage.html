@@ -1,0 +1,33 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Clear Storage</title>
+</head>
+<body>
+    <h1>Storage Cleanup</h1>
+    <button onclick="clearAllStorage()">Clear All Storage</button>
+    <button onclick="clearAuthStorage()">Clear Auth Storage</button>
+    <button onclick="clearProjectStorage()">Clear Project Storage</button>
+    
+    <script>
+        function clearAllStorage() {
+            localStorage.clear();
+            console.log('All localStorage cleared!');
+            alert('All storage cleared. Refresh the page.');
+        }
+        
+        function clearAuthStorage() {
+            localStorage.removeItem('token');
+            localStorage.removeItem('user');
+            console.log('Auth storage cleared!');
+            alert('Auth storage cleared. Refresh the page.');
+        }
+        
+        function clearProjectStorage() {
+            localStorage.removeItem('daw_project');
+            console.log('Project storage cleared!');
+            alert('Project storage cleared. Refresh the page.');
+        }
+    </script>
+</body>
+</html>

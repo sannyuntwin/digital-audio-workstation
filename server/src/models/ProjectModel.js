@@ -9,10 +9,11 @@ class ProjectModel {
   /**
    * Get all projects
    */
-  static async getAll() {
+  static async getAll(userId) {
     try {
       const projects = await db('projects')
         .select('*')
+        .where('user_id', userId)
         .orderBy('updated_at', 'desc');
       
       // Get tracks and clips for each project
@@ -48,11 +49,11 @@ class ProjectModel {
   /**
    * Get project by ID
    */
-  static async getById(id) {
+  static async getById(id, userId) {
     try {
       const project = await db('projects')
         .select('*')
-        .where('id', id)
+        .where({ id, user_id: userId })
         .first();
       
       if (!project) {
@@ -95,7 +96,8 @@ class ProjectModel {
           time_signature: projectData.timeSignature || { numerator: 4, denominator: 4 },
           sample_rate: projectData.sampleRate || 44100,
           settings: projectData.settings || { zoomLevel: 1, masterVolume: 1 },
-          metadata: projectData.metadata || { version: '1.0.0' }
+          metadata: projectData.metadata || { version: '1.0.0' },
+          user_id: projectData.userId
         })
         .returning('*');
 
@@ -109,10 +111,10 @@ class ProjectModel {
   /**
    * Update project
    */
-  static async update(id, projectData) {
+  static async update(id, userId, projectData) {
     try {
       const [project] = await db('projects')
-        .where('id', id)
+        .where({ id, user_id: userId })
         .update({
           name: projectData.name,
           description: projectData.description,
@@ -139,10 +141,10 @@ class ProjectModel {
   /**
    * Delete project
    */
-  static async delete(id) {
+  static async delete(id, userId) {
     try {
       const deleted = await db('projects')
-        .where('id', id)
+        .where({ id, user_id: userId })
         .del();
 
       return deleted > 0;
@@ -155,8 +157,17 @@ class ProjectModel {
   /**
    * Add track to project
    */
-  static async addTrack(projectId, trackData) {
+  static async addTrack(projectId, userId, trackData) {
     try {
+      // First verify user owns the project
+      const project = await db('projects')
+        .where({ id: projectId, user_id: userId })
+        .first();
+      
+      if (!project) {
+        throw new Error('Project not found or access denied');
+      }
+
       const [track] = await db('tracks')
         .insert({
           project_id: projectId,
@@ -180,8 +191,17 @@ class ProjectModel {
   /**
    * Update track
    */
-  static async updateTrack(projectId, trackId, trackData) {
+  static async updateTrack(projectId, userId, trackId, trackData) {
     try {
+      // First verify user owns the project
+      const project = await db('projects')
+        .where({ id: projectId, user_id: userId })
+        .first();
+      
+      if (!project) {
+        throw new Error('Project not found or access denied');
+      }
+
       const [track] = await db('tracks')
         .where({
           id: trackId,
@@ -212,8 +232,17 @@ class ProjectModel {
   /**
    * Delete track
    */
-  static async deleteTrack(projectId, trackId) {
+  static async deleteTrack(projectId, userId, trackId) {
     try {
+      // First verify user owns the project
+      const project = await db('projects')
+        .where({ id: projectId, user_id: userId })
+        .first();
+      
+      if (!project) {
+        throw new Error('Project not found or access denied');
+      }
+
       const deleted = await db('tracks')
         .where({
           id: trackId,
@@ -231,8 +260,17 @@ class ProjectModel {
   /**
    * Add clip to project
    */
-  static async addClip(projectId, clipData) {
+  static async addClip(projectId, userId, clipData) {
     try {
+      // First verify user owns the project
+      const project = await db('projects')
+        .where({ id: projectId, user_id: userId })
+        .first();
+      
+      if (!project) {
+        throw new Error('Project not found or access denied');
+      }
+
       const [clip] = await db('clips')
         .insert({
           project_id: projectId,
@@ -262,8 +300,17 @@ class ProjectModel {
   /**
    * Update clip
    */
-  static async updateClip(projectId, clipId, clipData) {
+  static async updateClip(projectId, userId, clipId, clipData) {
     try {
+      // First verify user owns the project
+      const project = await db('projects')
+        .where({ id: projectId, user_id: userId })
+        .first();
+      
+      if (!project) {
+        throw new Error('Project not found or access denied');
+      }
+
       const [clip] = await db('clips')
         .where({
           id: clipId,
@@ -293,8 +340,17 @@ class ProjectModel {
   /**
    * Move clip to different track
    */
-  static async moveClip(projectId, clipId, newTrackId, newStartTime) {
+  static async moveClip(projectId, userId, clipId, newTrackId, newStartTime) {
     try {
+      // First verify user owns the project
+      const project = await db('projects')
+        .where({ id: projectId, user_id: userId })
+        .first();
+      
+      if (!project) {
+        throw new Error('Project not found or access denied');
+      }
+
       const [clip] = await db('clips')
         .where({
           id: clipId,
@@ -321,8 +377,17 @@ class ProjectModel {
   /**
    * Delete clip
    */
-  static async deleteClip(projectId, clipId) {
+  static async deleteClip(projectId, userId, clipId) {
     try {
+      // First verify user owns the project
+      const project = await db('projects')
+        .where({ id: projectId, user_id: userId })
+        .first();
+      
+      if (!project) {
+        throw new Error('Project not found or access denied');
+      }
+
       const deleted = await db('clips')
         .where({
           id: clipId,
@@ -340,7 +405,7 @@ class ProjectModel {
   /**
    * Get project statistics
    */
-  static async getStats(projectId) {
+  static async getStats(projectId, userId) {
     try {
       const stats = await db('projects')
         .select(
@@ -350,7 +415,7 @@ class ProjectModel {
         )
         .leftJoin('tracks', 'projects.id', 'tracks.project_id')
         .leftJoin('clips', 'projects.id', 'clips.project_id')
-        .where('projects.id', projectId)
+        .where({ 'projects.id': projectId, 'projects.user_id': userId })
         .first();
 
       return stats;

@@ -6,12 +6,12 @@
 const express = require('express');
 const router = express.Router();
 const ProjectModel = require('../models/ProjectModel');
-const { optionalAuth } = require('../middleware/auth');
+const { authenticate } = require('../middleware/auth');
 
 // Get all projects
-router.get('/', optionalAuth, async (req, res) => {
+router.get('/', authenticate, async (req, res) => {
   try {
-    const projects = await ProjectModel.getAll();
+    const projects = await ProjectModel.getAll(req.user.id);
     res.json({
       success: true,
       count: projects.length,
@@ -26,9 +26,9 @@ router.get('/', optionalAuth, async (req, res) => {
 });
 
 // Get single project
-router.get('/:id', optionalAuth, async (req, res) => {
+router.get('/:id', authenticate, async (req, res) => {
   try {
-    const project = await ProjectModel.getById(req.params.id);
+    const project = await ProjectModel.getById(req.params.id, req.user.id);
     if (!project) {
       return res.status(404).json({
         success: false,
@@ -48,7 +48,7 @@ router.get('/:id', optionalAuth, async (req, res) => {
 });
 
 // Create new project
-router.post('/', optionalAuth, async (req, res) => {
+router.post('/', authenticate, async (req, res) => {
   try {
     const { name, description, bpm, timeSignature, sampleRate, tracks, clips, settings } = req.body;
     
@@ -60,7 +60,8 @@ router.post('/', optionalAuth, async (req, res) => {
       sampleRate,
       tracks,
       clips,
-      settings
+      settings,
+      userId: req.user.id
     };
 
     const project = await ProjectModel.create(projectData);
@@ -77,7 +78,7 @@ router.post('/', optionalAuth, async (req, res) => {
 });
 
 // Update project
-router.put('/:id', optionalAuth, async (req, res) => {
+router.put('/:id', authenticate, async (req, res) => {
   try {
     const { name, description, bpm, timeSignature, sampleRate, tracks, clips, settings } = req.body;
     
@@ -92,7 +93,7 @@ router.put('/:id', optionalAuth, async (req, res) => {
       settings
     };
 
-    const project = await ProjectModel.update(req.params.id, updateData);
+    const project = await ProjectModel.update(req.params.id, req.user.id, updateData);
     res.json({
       success: true,
       data: project
@@ -112,9 +113,9 @@ router.put('/:id', optionalAuth, async (req, res) => {
 });
 
 // Delete project
-router.delete('/:id', optionalAuth, async (req, res) => {
+router.delete('/:id', authenticate, async (req, res) => {
   try {
-    const project = await ProjectModel.delete(req.params.id);
+    const project = await ProjectModel.delete(req.params.id, req.user.id);
     res.json({
       success: true,
       data: project
@@ -134,7 +135,7 @@ router.delete('/:id', optionalAuth, async (req, res) => {
 });
 
 // Add track to project
-router.post('/:id/tracks', optionalAuth, async (req, res) => {
+router.post('/:id/tracks', authenticate, async (req, res) => {
   try {
     const { name, type, isMuted, isSolo, isArmed, volume, pan } = req.body;
     
@@ -148,16 +149,16 @@ router.post('/:id/tracks', optionalAuth, async (req, res) => {
       pan
     };
 
-    const track = await ProjectModel.addTrack(req.params.id, trackData);
+    const track = await ProjectModel.addTrack(req.params.id, req.user.id, trackData);
     res.status(201).json({
       success: true,
       data: track
     });
   } catch (error) {
-    if (error.message === 'Project not found') {
+    if (error.message === 'Project not found' || error.message === 'Project not found or access denied') {
       return res.status(404).json({
         success: false,
-        error: error.message
+        error: 'Project not found or access denied'
       });
     }
     res.status(500).json({
@@ -168,7 +169,7 @@ router.post('/:id/tracks', optionalAuth, async (req, res) => {
 });
 
 // Add clip to project
-router.post('/:id/clips', optionalAuth, async (req, res) => {
+router.post('/:id/clips', authenticate, async (req, res) => {
   try {
     const { name, type, startTime, duration, trackId } = req.body;
     
@@ -180,16 +181,16 @@ router.post('/:id/clips', optionalAuth, async (req, res) => {
       trackId
     };
 
-    const clip = await ProjectModel.addClip(req.params.id, clipData);
+    const clip = await ProjectModel.addClip(req.params.id, req.user.id, clipData);
     res.status(201).json({
       success: true,
       data: clip
     });
   } catch (error) {
-    if (error.message === 'Project not found') {
+    if (error.message === 'Project not found' || error.message === 'Project not found or access denied') {
       return res.status(404).json({
         success: false,
-        error: error.message
+        error: 'Project not found or access denied'
       });
     }
     res.status(500).json({
@@ -200,7 +201,7 @@ router.post('/:id/clips', optionalAuth, async (req, res) => {
 });
 
 // Update clip in project
-router.put('/:id/clips/:clipId', optionalAuth, async (req, res) => {
+router.put('/:id/clips/:clipId', authenticate, async (req, res) => {
   try {
     const { name, type, startTime, duration, trackId } = req.body;
     
@@ -212,16 +213,16 @@ router.put('/:id/clips/:clipId', optionalAuth, async (req, res) => {
       trackId
     };
 
-    const clip = await ProjectModel.updateClip(req.params.id, req.params.clipId, updateData);
+    const clip = await ProjectModel.updateClip(req.params.id, req.user.id, req.params.clipId, updateData);
     res.json({
       success: true,
       data: clip
     });
   } catch (error) {
-    if (error.message === 'Project not found' || error.message === 'Clip not found') {
+    if (error.message === 'Project not found' || error.message === 'Clip not found' || error.message === 'Project not found or access denied') {
       return res.status(404).json({
         success: false,
-        error: error.message
+        error: 'Project not found or access denied'
       });
     }
     res.status(500).json({
@@ -232,18 +233,18 @@ router.put('/:id/clips/:clipId', optionalAuth, async (req, res) => {
 });
 
 // Delete clip from project
-router.delete('/:id/clips/:clipId', optionalAuth, async (req, res) => {
+router.delete('/:id/clips/:clipId', authenticate, async (req, res) => {
   try {
-    const clip = await ProjectModel.deleteClip(req.params.id, req.params.clipId);
+    const clip = await ProjectModel.deleteClip(req.params.id, req.user.id, req.params.clipId);
     res.json({
       success: true,
       data: clip
     });
   } catch (error) {
-    if (error.message === 'Project not found' || error.message === 'Clip not found') {
+    if (error.message === 'Project not found' || error.message === 'Clip not found' || error.message === 'Project not found or access denied') {
       return res.status(404).json({
         success: false,
-        error: error.message
+        error: 'Project not found or access denied'
       });
     }
     res.status(500).json({
@@ -254,9 +255,9 @@ router.delete('/:id/clips/:clipId', optionalAuth, async (req, res) => {
 });
 
 // Duplicate project
-router.post('/:id/duplicate', optionalAuth, async (req, res) => {
+router.post('/:id/duplicate', authenticate, async (req, res) => {
   try {
-    const originalProject = await ProjectModel.getById(req.params.id);
+    const originalProject = await ProjectModel.getById(req.params.id, req.user.id);
     if (!originalProject) {
       return res.status(404).json({
         success: false,
@@ -273,7 +274,8 @@ router.post('/:id/duplicate', optionalAuth, async (req, res) => {
       sampleRate: originalProject.sampleRate,
       tracks: originalProject.tracks,
       clips: originalProject.clips,
-      settings: originalProject.settings
+      settings: originalProject.settings,
+      userId: req.user.id
     });
 
     res.status(201).json({

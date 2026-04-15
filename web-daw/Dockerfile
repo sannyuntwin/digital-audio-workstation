@@ -7,8 +7,12 @@ WORKDIR /app
 # Copy package.json and package-lock.json
 COPY package*.json ./
 
-# Install dependencies
-RUN npm ci --only=production
+# Install dependencies based on environment
+RUN if [ "$NODE_ENV" = "development" ]; then \
+        npm install; \
+    else \
+        npm ci --only=production; \
+    fi
 
 # Copy source code
 COPY . .

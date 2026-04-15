@@ -5,7 +5,7 @@
 
 import React, { useRef, useEffect } from 'react';
 import { useProjectStore, getProjectStore } from '../../store/projectStore';
-import './Transport.css';
+import '../../index.css';
 
 const Transport = ({ audioEngine, onPlay, onStop, isPlaying }) => {
   const [state, setState] = useProjectStore();
@@ -64,6 +64,7 @@ const Transport = ({ audioEngine, onPlay, onStop, isPlaying }) => {
       {/* 1. Left Section: Sidebar & Library Tools */}
       <div className="transport-left">
         <div className="utility-group">
+          <button className="util-btn" title="Library">📁</button>
           <button className="util-btn active" title="Inspector">i</button>
           <button className="util-btn" title="Quick Help">?</button>
         </div>
@@ -84,6 +85,7 @@ const Transport = ({ audioEngine, onPlay, onStop, isPlaying }) => {
           <button className={`playback-btn ${isPlaying ? 'active play' : ''}`} onClick={handlePlayPause} title="Play">▶</button>
           <button className={`playback-btn pause`} onClick={handlePlayPause} title="Pause">Ⅱ</button>
           <button className={`playback-btn ${isRecording ? 'active record' : ''}`} onClick={handleRecord} title="Record">●</button>
+          <button className="playback-btn" title="Cycle">🔄</button>
         </div>
 
         <div className="logic-lcd">
@@ -133,9 +135,15 @@ const Transport = ({ audioEngine, onPlay, onStop, isPlaying }) => {
              </div>
           </div>
         </div>
+
+        <div className="utility-group">
+          <button className="util-btn" title="Lists">☰</button>
+          <button className="util-btn" title="Browsers">🔍</button>
+        </div>
       </div>
     </div>
   );
 };
+
 
 export default Transport;

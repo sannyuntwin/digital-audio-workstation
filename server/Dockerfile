@@ -21,7 +21,7 @@ RUN if [ "$NODE_ENV" = "development" ]; then \
         npm install; \
         npm install -g nodemon; \
     else \
-        npm ci --only=production; \
+        npm install --omit=dev; \
     fi
 
 # Copy source code
