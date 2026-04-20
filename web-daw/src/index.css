@@ -47,6 +47,10 @@
   --timeline-grid: #444;
   --timeline-playhead: #4CAF50;
   
+  /* Quick Test */
+  --quick-test-bg: linear-gradient(180deg, #5bc4ff 0%, #308cfc 100%);
+  --quick-test-hover: linear-gradient(180deg, #6bcfff 0%, #409cfc 100%);
+  
   /* UI Constants */
   --f-size-xs: 10px;
   --f-size-sm: 11px;
@@ -4987,6 +4991,31 @@ button:focus, .btn:focus, .nav-btn:focus, .toolbar-btn:focus, .track-btn:focus, 
   align-items: center;
   gap: 1rem;
   text-align: left;
+}
+
+/* Quick Test Button */
+.quick-test-section {
+  margin: 2rem 0;
+  text-align: center;
+}
+
+.quick-test-btn {
+  background: var(--quick-test-bg);
+  border: none;
+  border-radius: 12px;
+  padding: 16px 32px;
+  font-size: 16px;
+  font-weight: 600;
+  color: white;
+  cursor: pointer;
+  transition: all 0.3s ease;
+  box-shadow: 0 4px 15px rgba(91, 196, 255, 0.3);
+}
+
+.quick-test-btn:hover {
+  background: var(--quick-test-hover);
+  transform: translateY(-2px);
+  box-shadow: 0 6px 20px rgba(91, 196, 255, 0.4);
 }
 
 .quick-action-btn:hover {

@@ -313,6 +313,18 @@ const ProjectsPage = ({ onEnterDAW }) => {
           )}
         </section>
 
+        {/* Quick Test - Open First Project */}
+        {projects.length > 0 && (
+          <section className="quick-test-section">
+            <button 
+              onClick={() => handleEnterProject(projects[0])}
+              className="quick-test-btn"
+            >
+              🎛️ Quick Test: Open "{projects[0].name}" in DAW
+            </button>
+          </section>
+        )}
+
         {/* Quick Actions */}
         <section className="quick-actions">
           <div className="quick-actions-card">

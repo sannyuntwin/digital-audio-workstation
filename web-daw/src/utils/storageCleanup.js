@@ -4,7 +4,7 @@
  */
 
 export const safeJSONParse = (str, defaultValue = null) => {
-  if (str === null || str === undefined || str === '') return defaultValue;
+  if (str === null || str === undefined || str === '' || str === 'undefined') return defaultValue;
   
   try {
     return JSON.parse(str);
@@ -52,15 +52,21 @@ export const initializeStorage = () => {
     const projectStr = localStorage.getItem('daw_project');
     
     // Validate each item
-    if (token && (typeof token !== 'string' || token.length === 0)) {
+    if (token && (typeof token !== 'string' || token.length === 0 || token === 'undefined')) {
       clearAuthStorage();
     }
     
-    if (userStr) {
+    // Check and clean user data if corrupted
+    if (userStr === 'undefined' || userStr === null) {
+      localStorage.removeItem('user');
+    } else if (userStr) {
       safeJSONParse(userStr);
     }
     
-    if (projectStr) {
+    // Check and clean project data if corrupted
+    if (projectStr === 'undefined' || projectStr === null) {
+      localStorage.removeItem('daw_project');
+    } else if (projectStr) {
       safeJSONParse(projectStr);
     }
   } catch (error) {

@@ -1,275 +1,437 @@
 /**
- * Audio Engine - Core audio functionality for the DAW
- * Handles AudioContext initialization, audio loading, and playback control
+ * AudioEngine - Web Audio API-based audio engine for the DAW
+ * Handles playback, metronome, recording, and scheduling
  */
 
 class AudioEngine {
   constructor() {
     this.audioContext = null;
-    this.activeSources = []; // Store multiple sources for multi-track playback
-    this.clipBuffers = new Map(); // Store buffers mapped to clip IDs
-    this.isPlaying = false;
-    this.startTime = 0;
-    this.pauseTime = 0;
-    
-    // Track-specific nodes
-    this.trackNodes = new Map(); // Map<trackId, { gain, panner, analyzer }>
     this.masterGain = null;
+    this.metronomeGain = null;
+    this.isPlaying = false;
+    this.isRecording = false;
+    this.currentTime = 0;
+    this.bpm = 120;
+    this.metronomeEnabled = false;
+    this.timeSignature = '4/4';
+    this.loopEnabled = false;
+    this.loopStart = 0;
+    this.loopEnd = 8;
+    
+    // Scheduling
+    this.nextNoteTime = 0;
+    this.scheduleAheadTime = 0.1;
+    this.lookahead = 25;
+    this.timerID = null;
+    
+    // Beat tracking
+    this.currentBeat = 0;
+    this.beatsPerBar = 4;
+    
+    // Callbacks
+    this.onTimeUpdate = null;
+    this.onBeat = null;
+    
+    // Recording
+    this.mediaRecorder = null;
+    this.recordedChunks = [];
+    this.recordedBuffers = [];
   }
 
   /**
-   * Initialize the Web Audio API context
-   * Must be called after user interaction for browser compatibility
+   * Initialize the audio context
    */
-  async initialize() {
-    try {
-      // Create audio context with fallback for older browsers
+  init() {
+    if (!this.audioContext) {
       const AudioContext = window.AudioContext || window.webkitAudioContext;
       this.audioContext = new AudioContext();
       
-      // Set sample rate to standard 44.1kHz
-      if (this.audioContext.sampleRate !== 44100) {
-        console.warn(`Audio context sample rate: ${this.audioContext.sampleRate}Hz (expected 44.1kHz)`);
-      }
+      // Create master gain node
+      this.masterGain = this.audioContext.createGain();
+      this.masterGain.gain.value = 0.8;
+      this.masterGain.connect(this.audioContext.destination);
       
-      console.log('Audio engine initialized successfully');
+      // Create metronome gain node
+      this.metronomeGain = this.audioContext.createGain();
+      this.metronomeGain.gain.value = 0.3;
+      this.metronomeGain.connect(this.masterGain);
+    }
+    
+    if (this.audioContext.state === 'suspended') {
+      this.audioContext.resume();
+    }
+  }
+
+  /**
+   * Get audio context current time
+   */
+  get currentAudioTime() {
+    return this.audioContext ? this.audioContext.currentTime : 0;
+  }
+
+  /**
+   * Set master volume (0-100)
+   */
+  setMasterVolume(volume) {
+    if (this.masterGain) {
+      this.masterGain.gain.value = volume / 100;
+    }
+  }
+
+  /**
+   * Set metronome volume (0-100)
+   */
+  setMetronomeVolume(volume) {
+    if (this.metronomeGain) {
+      this.metronomeGain.gain.value = volume / 100;
+    }
+  }
+
+  /**
+   * Play a metronome click
+   */
+  playClick(time, isAccent = false) {
+    if (!this.audioContext || !this.metronomeEnabled) return;
+    
+    const oscillator = this.audioContext.createOscillator();
+    const gainNode = this.audioContext.createGain();
+    
+    oscillator.connect(gainNode);
+    gainNode.connect(this.metronomeGain);
+    
+    // Accent beat has higher frequency
+    oscillator.frequency.value = isAccent ? 1000 : 800;
+    
+    // Short envelope for click sound
+    gainNode.gain.setValueAtTime(0, time);
+    gainNode.gain.linearRampToValueAtTime(1, time + 0.001);
+    gainNode.gain.exponentialRampToValueAtTime(0.001, time + 0.05);
+    
+    oscillator.start(time);
+    oscillator.stop(time + 0.05);
+  }
+
+  /**
+   * Schedule metronome clicks
+   */
+  scheduleMetronome() {
+    while (this.nextNoteTime < this.currentAudioTime + this.scheduleAheadTime) {
+      const isAccent = this.currentBeat === 0;
+      this.playClick(this.nextNoteTime, isAccent);
+      
+      // Advance time by one beat
+      const secondsPerBeat = 60.0 / this.bpm;
+      this.nextNoteTime += secondsPerBeat;
+      
+      // Update beat counter
+      this.currentBeat = (this.currentBeat + 1) % this.beatsPerBar;
+      
+      // Trigger beat callback
+      if (this.onBeat) {
+        this.onBeat(this.currentBeat, this.nextNoteTime);
+      }
+    }
+  }
+
+  /**
+   * Scheduler loop
+   */
+  scheduler = () => {
+    if (!this.isPlaying) return;
+    
+    this.scheduleMetronome();
+    
+    // Update current time
+    this.currentTime += this.lookahead / 1000;
+    
+    if (this.onTimeUpdate) {
+      this.onTimeUpdate(this.currentTime);
+    }
+    
+    // Handle loop
+    if (this.loopEnabled && this.currentTime >= this.loopEnd) {
+      this.currentTime = this.loopStart;
+      this.nextNoteTime = this.currentAudioTime;
+      this.currentBeat = 0;
+    }
+    
+    this.timerID = setTimeout(this.scheduler, this.lookahead);
+  };
+
+  /**
+   * Start playback
+   */
+  play() {
+    this.init();
+    
+    if (this.isPlaying) return;
+    
+    this.isPlaying = true;
+    this.nextNoteTime = this.currentAudioTime;
+    this.scheduler();
+  }
+
+  /**
+   * Pause/stop playback
+   */
+  stop() {
+    this.isPlaying = false;
+    if (this.timerID) {
+      clearTimeout(this.timerID);
+      this.timerID = null;
+    }
+  }
+
+  /**
+   * Reset to beginning
+   */
+  reset() {
+    this.currentTime = 0;
+    this.currentBeat = 0;
+  }
+
+  /**
+   * Seek to specific time
+   */
+  seek(time) {
+    this.currentTime = time;
+    // Calculate beat position
+    const secondsPerBeat = 60.0 / this.bpm;
+    this.currentBeat = Math.floor((time / secondsPerBeat)) % this.beatsPerBar;
+  }
+
+  /**
+   * Set BPM
+   */
+  setBPM(bpm) {
+    this.bpm = Math.max(40, Math.min(240, bpm));
+  }
+
+  /**
+   * Set time signature
+   */
+  setTimeSignature(sig) {
+    this.timeSignature = sig;
+    const [beats] = sig.split('/').map(Number);
+    this.beatsPerBar = beats || 4;
+  }
+
+  /**
+   * Enable/disable metronome
+   */
+  setMetronome(enabled) {
+    this.metronomeEnabled = enabled;
+  }
+
+  /**
+   * Set loop range
+   */
+  setLoop(enabled, start, end) {
+    this.loopEnabled = enabled;
+    this.loopStart = start;
+    this.loopEnd = end;
+  }
+
+  /**
+   * Generate a simple synth sound for testing
+   */
+  playTone(frequency = 440, duration = 0.5, time = null) {
+    this.init();
+    
+    const t = time || this.currentAudioTime;
+    const oscillator = this.audioContext.createOscillator();
+    const gainNode = this.audioContext.createGain();
+    
+    oscillator.connect(gainNode);
+    gainNode.connect(this.masterGain);
+    
+    oscillator.frequency.value = frequency;
+    oscillator.type = 'sine';
+    
+    gainNode.gain.setValueAtTime(0.3, t);
+    gainNode.gain.exponentialRampToValueAtTime(0.001, t + duration);
+    
+    oscillator.start(t);
+    oscillator.stop(t + duration);
+  }
+
+  /**
+   * Play a drum sound (simple kick)
+   */
+  playKick(time = null) {
+    this.init();
+    
+    const t = time || this.currentAudioTime;
+    const oscillator = this.audioContext.createOscillator();
+    const gainNode = this.audioContext.createGain();
+    
+    oscillator.connect(gainNode);
+    gainNode.connect(this.masterGain);
+    
+    oscillator.frequency.setValueAtTime(150, t);
+    oscillator.frequency.exponentialRampToValueAtTime(0.01, t + 0.5);
+    
+    gainNode.gain.setValueAtTime(0.8, t);
+    gainNode.gain.exponentialRampToValueAtTime(0.001, t + 0.5);
+    
+    oscillator.start(t);
+    oscillator.stop(t + 0.5);
+  }
+
+  /**
+   * Play a snare sound
+   */
+  playSnare(time = null) {
+    this.init();
+    
+    const t = time || this.currentAudioTime;
+    
+    // Noise buffer
+    const bufferSize = this.audioContext.sampleRate * 0.2;
+    const buffer = this.audioContext.createBuffer(1, bufferSize, this.audioContext.sampleRate);
+    const data = buffer.getChannelData(0);
+    
+    for (let i = 0; i < bufferSize; i++) {
+      data[i] = Math.random() * 2 - 1;
+    }
+    
+    const noise = this.audioContext.createBufferSource();
+    noise.buffer = buffer;
+    
+    const noiseGain = this.audioContext.createGain();
+    noiseGain.gain.setValueAtTime(0.4, t);
+    noiseGain.gain.exponentialRampToValueAtTime(0.001, t + 0.2);
+    
+    // Filter
+    const filter = this.audioContext.createBiquadFilter();
+    filter.type = 'highpass';
+    filter.frequency.value = 1000;
+    
+    noise.connect(filter);
+    filter.connect(noiseGain);
+    noiseGain.connect(this.masterGain);
+    
+    noise.start(t);
+    noise.stop(t + 0.2);
+  }
+
+  /**
+   * Play hi-hat sound
+   */
+  playHiHat(time = null) {
+    this.init();
+    
+    const t = time || this.currentAudioTime;
+    
+    const bufferSize = this.audioContext.sampleRate * 0.05;
+    const buffer = this.audioContext.createBuffer(1, bufferSize, this.audioContext.sampleRate);
+    const data = buffer.getChannelData(0);
+    
+    for (let i = 0; i < bufferSize; i++) {
+      data[i] = Math.random() * 2 - 1;
+    }
+    
+    const noise = this.audioContext.createBufferSource();
+    noise.buffer = buffer;
+    
+    const noiseGain = this.audioContext.createGain();
+    noiseGain.gain.setValueAtTime(0.2, t);
+    noiseGain.gain.exponentialRampToValueAtTime(0.001, t + 0.05);
+    
+    const filter = this.audioContext.createBiquadFilter();
+    filter.type = 'highpass';
+    filter.frequency.value = 5000;
+    
+    noise.connect(filter);
+    filter.connect(noiseGain);
+    noiseGain.connect(this.masterGain);
+    
+    noise.start(t);
+    noise.stop(t + 0.05);
+  }
+
+  /**
+   * Start recording from microphone
+   */
+  async startRecording() {
+    try {
+      const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
+      this.mediaRecorder = new MediaRecorder(stream);
+      this.recordedChunks = [];
+      
+      this.mediaRecorder.ondataavailable = (event) => {
+        if (event.data.size > 0) {
+          this.recordedChunks.push(event.data);
+        }
+      };
+      
+      this.mediaRecorder.start();
+      this.isRecording = true;
+      
       return true;
-    } catch (error) {
-      console.error('Failed to initialize audio context:', error);
+    } catch (err) {
+      console.error('Failed to start recording:', err);
       return false;
     }
   }
 
   /**
-   * Resume audio context if it was suspended
+   * Stop recording
    */
-  async resumeContext() {
-    if (this.audioContext && this.audioContext.state === 'suspended') {
-      await this.audioContext.resume();
-    }
-  }
-
-  /**
-   * Extract peaks from an AudioBuffer for waveform visualization
-   * @param {AudioBuffer} buffer - The buffer to analyze
-   * @param {number} length - Number of peak pairs to return (default: 200)
-   * @returns {Array<Array<number>>} - Array of [min, max] peak pairs
-   */
-  getPeaks(buffer, length = 200) {
-    const sampleSize = Math.floor(buffer.length / length);
-    const step = Math.max(1, Math.floor(sampleSize / 10)); // Optimization: take 10 samples per peak area
-    const peaks = [];
-    const chanData = buffer.getChannelData(0); // Analyze first channel
-
-    for (let i = 0; i < length; i++) {
-      const start = i * sampleSize;
-      const end = start + sampleSize;
-      let min = 0;
-      let max = 0;
-
-      for (let j = start; j < end; j += step) {
-        const val = chanData[j];
-        if (val > max) max = val;
-        else if (val < min) min = val;
+  stopRecording() {
+    return new Promise((resolve) => {
+      if (!this.mediaRecorder) {
+        resolve(null);
+        return;
       }
-      peaks.push([min, max]);
-    }
-
-    return peaks;
-  }
-
-  /**
-   * Decode an audio file (File or Blob) into an AudioBuffer
-   * @param {File|Blob} file - The audio file to decode
-   * @returns {Promise<AudioBuffer>} - Decoded audio buffer
-   */
-  async decodeAudioFile(file) {
-    if (!this.audioContext) {
-      throw new Error('Audio engine not initialized.');
-    }
-
-    try {
-      const arrayBuffer = await file.arrayBuffer();
-      const audioBuffer = await this.audioContext.decodeAudioData(arrayBuffer);
-      return audioBuffer;
-    } catch (error) {
-      console.error('Failed to decode audio file:', error);
-      throw error;
-    }
-  }
-
-  /**
-   * Store a decoded buffer linked to a specific clip
-   * @param {string|number} clipId - Unique clip identifier
-   * @param {AudioBuffer} buffer - Decoded audio data
-   */
-  storeBuffer(clipId, buffer) {
-    this.clipBuffers.set(clipId, buffer);
-  }
-
-  /**
-   * Load audio file from URL into an AudioBuffer (Utility)
-   * @param {string} url - URL of the audio file to load
-   * @returns {Promise<AudioBuffer>} - Loaded audio buffer
-   */
-  async loadAudio(url) {
-    if (!this.audioContext) {
-      throw new Error('Audio engine not initialized. Call initialize() first.');
-    }
-
-    try {
-      // Fetch audio file
-      const response = await fetch(url);
-      if (!response.ok) {
-        throw new Error(`Failed to fetch audio file: ${response.statusText}`);
-      }
-
-      // Convert response to array buffer
-      const arrayBuffer = await response.arrayBuffer();
       
-      // Decode audio data
-      const audioBuffer = await this.audioContext.decodeAudioData(arrayBuffer);
+      this.mediaRecorder.onstop = async () => {
+        const blob = new Blob(this.recordedChunks, { type: 'audio/webm' });
+        const arrayBuffer = await blob.arrayBuffer();
+        const audioBuffer = await this.audioContext.decodeAudioData(arrayBuffer);
+        
+        this.recordedBuffers.push(audioBuffer);
+        this.isRecording = false;
+        
+        resolve(audioBuffer);
+      };
       
-      this.audioBuffer = audioBuffer;
-      console.log(`Audio loaded successfully: ${audioBuffer.duration}s, ${audioBuffer.numberOfChannels} channels`);
-      
-      return audioBuffer;
-    } catch (error) {
-      console.error('Failed to load audio:', error);
-      throw error;
-    }
-  }
-
-  /**
-   * Start or resume audio playback for specific tracks and clips
-   */
-  play(offset = 0, tracks = [], clips = []) {
-    if (!this.audioContext) throw new Error('Audio engine not initialized');
-
-    this.stop();
-
-    const currentTime = this.audioContext.currentTime;
-
-    // 1. Determine which tracks are audible (Solo logic)
-    const hasSolo = tracks.some(t => t.isSolo);
-    const audibleTrackIds = new Set(
-      tracks
-        .filter(t => (hasSolo ? t.isSolo : true) && !t.isMuted)
-        .map(t => t.id)
-    );
-
-    // 2. Filter clips belonging to audible tracks
-    const clipsToPlay = clips.filter(clip => audibleTrackIds.has(clip.trackId));
-
-    clipsToPlay.forEach(clip => {
-      if (clip.type !== 'audio') return;
-      
-      const buffer = this.clipBuffers.get(clip.id);
-      if (!buffer) return;
-
-      // Check if clip should be playing right now, or in the future
-      const clipEndTime = clip.startTime + clip.duration;
-      if (offset >= clipEndTime) return; // Clip is already in the past
-      
-      const source = this.audioContext.createBufferSource();
-      source.buffer = buffer;
-
-      // Route through track nodes if they exist
-      const trackNodes = this.trackNodes.get(clip.trackId);
-      if (trackNodes) {
-        source.connect(trackNodes.gain);
-      } else {
-        source.connect(this.audioContext.destination);
-      }
-
-      // Calculate tight schedule
-      const startDelay = Math.max(0, clip.startTime - offset);
-      
-      // startOffset = where in the raw buffer this clip starts from (non-destructive trim)
-      const clipStartOffset = clip.startOffset || 0;
-      const bufferOffset = clipStartOffset + Math.max(0, offset - clip.startTime);
-      
-      // Remaining clip duration (accounting for how much we've already consumed)
-      const remainingDuration = clip.duration - Math.max(0, offset - clip.startTime);
-      
-      // source.start(when, bufferOffset, duration) - duration enforces stop point
-      source.start(currentTime + startDelay, bufferOffset, remainingDuration);
-      this.activeSources.push(source);
+      this.mediaRecorder.stop();
+      this.mediaRecorder.stream.getTracks().forEach(track => track.stop());
     });
-
-    this.isPlaying = true;
-    this.startTime = currentTime - offset;
-    
-    console.log(`Playback started with ${this.activeSources.length} audible sources.`);
   }
 
   /**
-   * Stop audio playback
+   * Play a recorded buffer
    */
-  stop() {
-    if (this.activeSources && this.activeSources.length > 0) {
-      this.activeSources.forEach(source => {
-        try {
-          source.stop();
-          source.disconnect();
-        } catch (e) {}
-      });
-      this.activeSources = [];
-    }
-    this.isPlaying = false;
-  }
-
-  /**
-   * Create audio nodes for a specific track
-   * @param {number} trackId - Track ID
-   */
-  createTrackNodes(trackId) {
+  playBuffer(buffer, time = null) {
     if (!this.audioContext) return;
     
-    if (this.trackNodes.has(trackId)) return;
-
-    const gain = this.audioContext.createGain();
-    const panner = this.audioContext.createStereoPanner();
-    const analyzer = this.audioContext.createAnalyser();
-    
-    // Chain: Source (eventually) -> Gain -> Panner -> Analyzer -> Destination
-    gain.connect(panner);
-    panner.connect(analyzer);
-    analyzer.connect(this.audioContext.destination);
-    
-    this.trackNodes.set(trackId, { gain, panner, analyzer });
-    console.log(`Created audio nodes for track: ${trackId}`);
+    const t = time || this.currentAudioTime;
+    const source = this.audioContext.createBufferSource();
+    source.buffer = buffer;
+    source.connect(this.masterGain);
+    source.start(t);
   }
 
   /**
-   * Update track volume
+   * Dispose and clean up
    */
-  updateTrackVolume(trackId, volume) {
-    const nodes = this.trackNodes.get(trackId);
-    if (nodes) {
-      nodes.gain.gain.setTargetAtTime(volume, this.audioContext.currentTime, 0.02);
-    }
-  }
-
-  /**
-   * Update track pan
-   */
-  updateTrackPan(trackId, pan) {
-    const nodes = this.trackNodes.get(trackId);
-    if (nodes && nodes.panner) {
-      nodes.panner.pan.setTargetAtTime(pan, this.audioContext.currentTime, 0.02);
-    }
-  }
-
   dispose() {
     this.stop();
-    this.trackNodes.clear();
-    this.clipBuffers.clear();
+    
     if (this.audioContext) {
       this.audioContext.close();
       this.audioContext = null;
     }
+    
+    this.masterGain = null;
+    this.metronomeGain = null;
   }
 }
 
-export default AudioEngine;
+// Create singleton instance
+const audioEngine = new AudioEngine();
+
+export default audioEngine;
+export { AudioEngine };

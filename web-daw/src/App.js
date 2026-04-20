@@ -3,9 +3,12 @@
  * Integrates all components and manages the application lifecycle
  */
 
-import React from 'react';
+import React, { useEffect } from 'react';
 import { BrowserRouter as Router, Routes, Route, Navigate } from 'react-router-dom';
 import './index.css';
+
+// Import storage cleanup
+import { initializeStorage } from './utils/storageCleanup';
 
 // Import auth context
 import { AuthProvider } from './contexts/AuthContext';
@@ -41,13 +44,6 @@ function AppContent() {
           <DAWInterfacePage />
         </ProtectedRoute>
       } />
-      
-      <Route path="/daw" element={
-        <ProtectedRoute>
-          <DAWInterfacePage />
-        </ProtectedRoute>
-      } />
-      
       {/* Redirect any unknown routes to landing page */}
       <Route path="*" element={<Navigate to="/" replace />} />
     </Routes>
@@ -56,6 +52,11 @@ function AppContent() {
 
 // Main App component with auth provider
 function App() {
+  // Initialize storage cleanup on app startup
+  useEffect(() => {
+    initializeStorage();
+  }, []);
+
   return (
     <AuthProvider>
       <Router>
