@@ -58,26 +58,7 @@ services:
       web-daw-db:
         condition: service_healthy
 
-  # Frontend (React App)
-  web-daw-frontend:
-    build:
-      context: ./web-daw
-      dockerfile: Dockerfile
-    container_name: web-daw-frontend
-    ports:
-      - "3000:3000"
-    environment:
-      - NODE_ENV=development
-      - REACT_APP_API_URL=http://localhost:8000
-    volumes:
-      - ./web-daw/src:/app/src
-      - ./web-daw/public:/app/public
-    restart: unless-stopped
-    networks:
-      - web-daw-network
-    depends_on:
-      - web-daw-backend
-
+  
   
 networks:
   web-daw-network:

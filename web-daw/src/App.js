@@ -15,8 +15,8 @@ import { AuthProvider } from './contexts/AuthContext';
 
 // Import page components
 import LandingPage from './pages/LandingPage';
-import ProjectsPage from './pages/ProjectsPage';
-import DAWInterfacePage from './pages/DAWInterfacePage';
+import DashboardPage from './pages/DashboardPage';
+import DAWEditorPage from './pages/DAWEditorPage';
 import LoginPage from './pages/LoginPage';
 import RegisterPage from './pages/RegisterPage';
 
@@ -33,17 +33,18 @@ function AppContent() {
       <Route path="/register" element={<RegisterPage />} />
       
       {/* Protected Routes */}
-      <Route path="/projects" element={
+      <Route path="/dashboard" element={
         <ProtectedRoute>
-          <ProjectsPage />
+          <DashboardPage />
         </ProtectedRoute>
       } />
       
-      <Route path="/daw/:projectId" element={
+      <Route path="/project/:projectId/" element={
         <ProtectedRoute>
-          <DAWInterfacePage />
+          <DAWEditorPage />
         </ProtectedRoute>
       } />
+      
       {/* Redirect any unknown routes to landing page */}
       <Route path="*" element={<Navigate to="/" replace />} />
     </Routes>

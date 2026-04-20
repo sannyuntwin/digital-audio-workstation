@@ -68,7 +68,7 @@ const RegisterPage = () => {
     try {
       const { confirmPassword, ...registerData } = formData;
       await register(registerData);
-      navigate('/projects');
+      navigate('/dashboard');
     } catch (error) {
       // Error is handled by auth context
       console.error('Registration failed:', error);

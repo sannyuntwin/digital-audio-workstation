@@ -148,7 +148,7 @@ const ProjectsPage = ({ onEnterDAW }) => {
         <section className="projects-hero">
           <div className="hero-content">
             <div className="hero-text">
-              <h1 className="hero-title">My Projects</h1>
+              <h1 className="hero-title">My Dashboard</h1>
               <p className="hero-subtitle">Create, manage, and collaborate on your music productions</p>
               <div className="hero-stats">
                 <div className="stat">

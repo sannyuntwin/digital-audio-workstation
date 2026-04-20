@@ -23,8 +23,8 @@ const LandingPage = () => {
             {isAuthenticated ? (
               <>
                 <span className="welcome-text">Welcome, {user?.first_name || user?.username}</span>
-                <Link to="/projects" className="nav-btn primary">
-                  My Projects
+                <Link to="/dashboard" className="nav-btn primary">
+                  My Dashboard
                 </Link>
               </>
             ) : (
@@ -66,8 +66,8 @@ const LandingPage = () => {
             </div>
             <div className="hero-cta">
               {isAuthenticated ? (
-                <Link to="/projects" className="cta-primary">
-                  Go to My Projects
+                <Link to="/dashboard" className="cta-primary">
+                  Go to My Dashboard
                 </Link>
               ) : (
                 <>
@@ -232,8 +232,8 @@ const LandingPage = () => {
           <h2 className="section-title">Ready to Create?</h2>
           <p>Join thousands of musicians using Web DAW for professional audio production</p>
           <div className="cta-buttons">
-            <Link to="/projects" className="cta-primary">
-              View Projects
+            <Link to="/dashboard" className="cta-primary">
+              View Dashboard
             </Link>
             <Link to="/daw-interface" className="cta-secondary">
               Try Demo

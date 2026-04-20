@@ -6,6 +6,13 @@ import DAWSidebar from '../components/DAWSidebar';
 import DAWTimeline from '../components/DAWTimeline';
 import audioEngine from '../audio/AudioEngine';
 
+// Import modal components (we'll create these inline for now)
+import PianoRollModal from '../components/modals/PianoRollModal';
+import MixerModal from '../components/modals/MixerModal';
+import SoundLibraryModal from '../components/modals/SoundLibraryModal';
+import SettingsModal from '../components/modals/SettingsModal';
+import ExportModal from '../components/modals/ExportModal';
+
 // ============ STYLES ============
 const pageStyle = {
   minHeight: '100vh',
@@ -34,11 +41,6 @@ const contentStyle = {
   display: 'flex',
   overflow: 'hidden',
   background: 'linear-gradient(180deg, rgba(14, 18, 28, 0.62) 0%, rgba(8, 11, 17, 0.86) 100%)'
-};
-
-const compactContentStyle = {
-  ...contentStyle,
-  flexDirection: 'column'
 };
 
 const statusStripStyle = {
@@ -86,70 +88,16 @@ const statusValueStyle = {
   fontWeight: 700
 };
 
-const panelToggleBtnStyle = {
-  border: '1px solid rgba(147, 197, 253, 0.42)',
+const quickNavBtnStyle = {
+  border: '1px solid rgba(59, 130, 246, 0.55)',
   borderRadius: '8px',
   padding: '6px 12px',
-  background: 'rgba(30, 58, 138, 0.34)',
-  color: '#eff6ff',
+  background: 'rgba(30, 64, 175, 0.48)',
+  color: '#dbeafe',
   fontSize: '12px',
   fontWeight: 600,
-  cursor: 'pointer'
-};
-
-const quickNavBtnStyle = {
-  ...panelToggleBtnStyle,
-  borderColor: 'rgba(59, 130, 246, 0.55)',
-  background: 'rgba(30, 64, 175, 0.48)',
-  color: '#dbeafe'
-};
-
-const stateContainerStyle = {
-  flex: 1,
-  display: 'flex',
-  alignItems: 'center',
-  justifyContent: 'center',
-  padding: '20px'
-};
-
-const stateCardStyle = {
-  width: 'min(620px, 100%)',
-  padding: '24px',
-  borderRadius: '14px',
-  textAlign: 'center',
-  background: 'rgba(15, 23, 42, 0.72)',
-  border: '1px solid rgba(148, 163, 184, 0.3)',
-  boxShadow: '0 16px 32px rgba(0, 0, 0, 0.32)'
-};
-
-const messageStyle = {
-  margin: 0,
-  fontSize: '20px',
-  color: '#e2e8f0',
-  fontWeight: 700
-};
-
-const helperMessageStyle = {
-  margin: '10px 0 0',
-  fontSize: '14px',
-  color: '#94a3b8'
-};
-
-const errorStyle = {
-  ...helperMessageStyle,
-  color: '#fecaca'
-};
-
-const retryBtnStyle = {
-  marginTop: '16px',
-  border: '1px solid rgba(248, 113, 113, 0.55)',
-  borderRadius: '10px',
-  padding: '8px 14px',
-  background: 'rgba(127, 29, 29, 0.46)',
-  color: '#fee2e2',
   cursor: 'pointer',
-  fontSize: '13px',
-  fontWeight: 600
+  transition: 'all 0.2s ease'
 };
 
 const studioLayoutStyle = {
@@ -165,11 +113,6 @@ const studioRowStyle = {
   display: 'flex',
   minHeight: 0,
   overflow: 'hidden'
-};
-
-const studioRowCompactStyle = {
-  ...studioRowStyle,
-  flexDirection: 'column'
 };
 
 const panelStyle = {
@@ -189,95 +132,6 @@ const rightPanelStyle = {
   borderLeft: '1px solid rgba(148, 163, 184, 0.2)'
 };
 
-const panelCompactStyle = {
-  width: '100%',
-  minWidth: '100%',
-  maxHeight: '210px',
-  borderRight: 'none',
-  borderBottom: '1px solid rgba(148, 163, 184, 0.18)'
-};
-
-const rightPanelCompactStyle = {
-  ...panelCompactStyle,
-  borderTop: '1px solid rgba(148, 163, 184, 0.18)',
-  borderBottom: 'none'
-};
-
-const panelHeaderStyle = {
-  height: '38px',
-  display: 'flex',
-  alignItems: 'center',
-  justifyContent: 'space-between',
-  padding: '0 12px',
-  borderBottom: '1px solid rgba(148, 163, 184, 0.2)',
-  fontSize: '12px',
-  textTransform: 'uppercase',
-  letterSpacing: '0.6px',
-  fontWeight: 700,
-  color: '#dbeafe'
-};
-
-const panelTabRowStyle = {
-  display: 'flex',
-  gap: '6px',
-  padding: '8px 10px 6px'
-};
-
-const panelTabStyle = {
-  border: '1px solid rgba(148, 163, 184, 0.28)',
-  background: 'rgba(15, 23, 42, 0.4)',
-  color: '#bfdbfe',
-  borderRadius: '7px',
-  padding: '4px 8px',
-  fontSize: '11px',
-  fontWeight: 600,
-  cursor: 'pointer'
-};
-
-const panelTabActiveStyle = {
-  ...panelTabStyle,
-  borderColor: 'rgba(96, 165, 250, 0.65)',
-  background: 'rgba(30, 64, 175, 0.35)',
-  color: '#eff6ff'
-};
-
-const panelBodyStyle = {
-  flex: 1,
-  padding: '0 10px 10px',
-  overflowY: 'auto'
-};
-
-const panelItemStyle = {
-  display: 'flex',
-  alignItems: 'center',
-  justifyContent: 'space-between',
-  gap: '8px',
-  border: '1px solid rgba(148, 163, 184, 0.2)',
-  borderRadius: '8px',
-  padding: '8px 9px',
-  marginBottom: '8px',
-  background: 'rgba(15, 23, 42, 0.44)'
-};
-
-const panelItemTitleStyle = {
-  fontSize: '12px',
-  color: '#eff6ff',
-  fontWeight: 600
-};
-
-const panelItemMetaStyle = {
-  fontSize: '11px',
-  color: '#93c5fd'
-};
-
-const panelBadgeStyle = {
-  border: '1px solid rgba(148, 163, 184, 0.3)',
-  borderRadius: '999px',
-  padding: '2px 6px',
-  fontSize: '10px',
-  color: '#cbd5e1'
-};
-
 const centerWorkspaceStyle = {
   flex: 1,
   display: 'flex',
@@ -294,22 +148,9 @@ const arrangementRowStyle = {
   overflow: 'hidden'
 };
 
-const arrangementRowCompactStyle = {
-  ...arrangementRowStyle,
-  flexDirection: 'column'
-};
-
 const trackWrapStyle = {
   display: 'flex',
   borderRight: '1px solid rgba(148, 163, 184, 0.2)'
-};
-
-const trackWrapCompactStyle = {
-  ...trackWrapStyle,
-  width: '100%',
-  maxHeight: '250px',
-  borderRight: 'none',
-  borderBottom: '1px solid rgba(148, 163, 184, 0.2)'
 };
 
 const timelineWrapStyle = {
@@ -349,84 +190,28 @@ const bottomBodyStyle = {
   padding: '10px 12px'
 };
 
-const pianoRollGridStyle = {
-  height: '100%',
-  borderRadius: '10px',
-  border: '1px solid rgba(148, 163, 184, 0.22)',
-  background: 'repeating-linear-gradient(0deg, rgba(148, 163, 184, 0.08) 0px, rgba(148, 163, 184, 0.08) 1px, transparent 1px, transparent 22px), repeating-linear-gradient(90deg, rgba(148, 163, 184, 0.08) 0px, rgba(148, 163, 184, 0.08) 1px, transparent 1px, transparent 56px)',
-  position: 'relative',
+const modalOverlayStyle = {
+  position: 'fixed',
+  top: 0,
+  left: 0,
+  right: 0,
+  bottom: 0,
+  background: 'rgba(0, 0, 0, 0.7)',
+  display: 'flex',
+  alignItems: 'center',
+  justifyContent: 'center',
+  zIndex: 1000
+};
+
+const modalContentStyle = {
+  background: 'rgba(8, 12, 18, 0.95)',
+  borderRadius: '16px',
+  border: '1px solid rgba(148, 163, 184, 0.3)',
+  boxShadow: '0 20px 40px rgba(0, 0, 0, 0.4)',
+  maxWidth: '90vw',
+  maxHeight: '90vh',
   overflow: 'hidden'
 };
-
-const pianoNoteStyle = {
-  position: 'absolute',
-  height: '14px',
-  borderRadius: '4px',
-  background: 'linear-gradient(90deg, #3b82f6 0%, #1d4ed8 100%)',
-  border: '1px solid rgba(191, 219, 254, 0.6)'
-};
-
-const mixerRowStyle = {
-  display: 'grid',
-  gridTemplateColumns: 'minmax(130px, 1fr) 120px 120px 120px 120px',
-  gap: '10px',
-  padding: '8px 10px',
-  borderRadius: '8px',
-  border: '1px solid rgba(148, 163, 184, 0.2)',
-  background: 'rgba(15, 23, 42, 0.44)',
-  marginBottom: '8px',
-  alignItems: 'center'
-};
-
-const mixerHeadRowStyle = {
-  ...mixerRowStyle,
-  marginBottom: '10px',
-  background: 'rgba(15, 23, 42, 0.7)',
-  color: '#93c5fd',
-  fontSize: '11px',
-  fontWeight: 700,
-  textTransform: 'uppercase'
-};
-
-const mixerTrackCellStyle = {
-  fontSize: '12px',
-  color: '#e2e8f0',
-  fontWeight: 600
-};
-
-const mixerValueStyle = {
-  fontSize: '12px',
-  color: '#cbd5e1'
-};
-
-const statusAlertStyle = {
-  fontSize: '12px',
-  color: '#fde68a'
-};
-
-const assetLibrary = [
-  { name: 'Kick_808.wav', type: 'Sample', detail: 'One Shot' },
-  { name: 'Snare_Snap.wav', type: 'Sample', detail: 'One Shot' },
-  { name: 'House_Hat_Loop.wav', type: 'Loop', detail: '124 BPM' },
-  { name: 'Deep_Bass_01.wav', type: 'Loop', detail: '8 Bars' },
-  { name: 'Analog_Stab.wav', type: 'Sample', detail: 'One Shot' }
-];
-
-const instrumentLibrary = [
-  { name: 'Analog Poly', family: 'Synth', preset: 'Warm Pad' },
-  { name: 'Mono Bass', family: 'Synth', preset: 'Solid Sub' },
-  { name: 'FM Keys', family: 'Keys', preset: 'Glass Bell' },
-  { name: 'Drum Rack', family: 'Drums', preset: 'Studio Kit' },
-  { name: 'String Ensemble', family: 'Orchestral', preset: 'Wide Layer' }
-];
-
-const effectLibrary = [
-  { name: 'Channel EQ', state: 'On', value: 'HP 90Hz' },
-  { name: 'Compressor', state: 'On', value: '3.0:1' },
-  { name: 'Reverb', state: 'On', value: 'Hall 18%' },
-  { name: 'Delay', state: 'Off', value: '1/8 PingPong' },
-  { name: 'Limiter', state: 'On', value: '-0.8dB' }
-];
 
 const getIsCompactLayout = () => (
   typeof window !== 'undefined' ? window.innerWidth < 1180 : false
@@ -445,7 +230,7 @@ const formatDuration = (seconds) => {
   return `${String(minutes).padStart(2, '0')}:${String(secs).padStart(2, '0')}`;
 };
 
-const DAWInterfacePage = () => {
+const DAWEditorPage = () => {
   const navigate = useNavigate();
   const { projectId } = useParams();
   const [projectName, setProjectName] = useState('');
@@ -461,11 +246,18 @@ const DAWInterfacePage = () => {
   const [saveStatus, setSaveStatus] = useState('idle');
   const [studioMessage, setStudioMessage] = useState('');
 
+  // Modal states
+  const [showPianoRoll, setShowPianoRoll] = useState(false);
+  const [showMixer, setShowMixer] = useState(false);
+  const [showSoundLibrary, setShowSoundLibrary] = useState(false);
+  const [showSettings, setShowSettings] = useState(false);
+  const [showExport, setShowExport] = useState(false);
+
   // Transport state
   const [isPlaying, setIsPlaying] = useState(false);
   const [isRecording, setIsRecording] = useState(false);
   const [currentTime, setCurrentTime] = useState('00:00:00');
-  const [playheadTime, setPlayheadTime] = useState(30); // seconds, for visual playhead
+  const [playheadTime, setPlayheadTime] = useState(30);
   const [bpm, setBpm] = useState(120);
   const [zoom, setZoom] = useState(100);
 
@@ -510,7 +302,7 @@ const DAWInterfacePage = () => {
   const [masterVolume, setMasterVolume] = useState(80);
   const [clipboard, setClipboard] = useState(null);
 
-  // Undo/Redo history - stores snapshots of tracks and clips
+  // Undo/Redo history
   const [history, setHistory] = useState([{ tracks: [], clips: [] }]);
   const [historyIndex, setHistoryIndex] = useState(0);
 
@@ -529,7 +321,6 @@ const DAWInterfacePage = () => {
         tracks: JSON.parse(JSON.stringify(newTracks)),
         clips: JSON.parse(JSON.stringify(newClips))
       });
-      // Limit history to 50 states
       if (newHistory.length > 50) {
         newHistory.shift();
         setHistoryIndex(prev => prev - 1);
@@ -571,7 +362,7 @@ const DAWInterfacePage = () => {
       setError('');
       const response = await apiService.getProject(projectId);
       const project = response?.data || response;
-      setProjectName(project?.name || 'Unnamed Project');
+      setProjectName(project?.name || 'Untitled Project');
       if (project?.bpm) {
         setBpm(project.bpm);
       }
@@ -587,7 +378,7 @@ const DAWInterfacePage = () => {
 
   const buildProjectSnapshot = useCallback(() => ({
     id: projectId,
-    name: projectName || 'Unnamed Project',
+    name: projectName || 'Untitled Project',
     bpm,
     timeSignature,
     masterVolume,
@@ -614,23 +405,8 @@ const DAWInterfacePage = () => {
   }, [buildProjectSnapshot, projectId]);
 
   const handleExportProject = useCallback(() => {
-    try {
-      const snapshot = buildProjectSnapshot();
-      const payload = JSON.stringify(snapshot, null, 2);
-      const blob = new Blob([payload], { type: 'application/json' });
-      const url = URL.createObjectURL(blob);
-      const anchor = document.createElement('a');
-      anchor.href = url;
-      anchor.download = `${(projectName || 'project').replace(/\s+/g, '-').toLowerCase()}-${projectId}.json`;
-      document.body.appendChild(anchor);
-      anchor.click();
-      document.body.removeChild(anchor);
-      URL.revokeObjectURL(url);
-      setStudioMessage('Session exported as JSON.');
-    } catch (exportError) {
-      setStudioMessage(`Export failed: ${exportError.message}`);
-    }
-  }, [buildProjectSnapshot, projectId, projectName]);
+    setShowExport(true);
+  }, []);
 
   useEffect(() => {
     fetchProject();
@@ -683,27 +459,37 @@ const DAWInterfacePage = () => {
       if (e.key === 'Delete' || e.key === 'Backspace') {
         if (selectedClipIds.length > 0 && editingTrackId === null) {
           e.preventDefault();
-          selectedClipIds.forEach(id => handleClipDelete(id));
+          selectedClipIds.forEach(id => {
+            setClips(prev => prev.filter(c => c.id !== id));
+          });
         }
       }
-      // Drum kit keyboard shortcuts
+      // Modal shortcuts
       if (!e.ctrlKey && !e.metaKey && !e.altKey) {
-        audioEngine.init();
         switch (e.key.toLowerCase()) {
-          case 'z':
-            audioEngine.playKick();
-            break;
-          case 'x':
-            audioEngine.playSnare();
-            break;
-          case 'c':
-            audioEngine.playHiHat();
-            break;
-          case ' ':
+          case 'p':
             e.preventDefault();
-            handlePlay();
+            setShowPianoRoll(true);
             break;
-          default:
+          case 'm':
+            e.preventDefault();
+            setShowMixer(true);
+            break;
+          case 'l':
+            e.preventDefault();
+            setShowSoundLibrary(true);
+            break;
+          case ',':
+            e.preventDefault();
+            setShowSettings(true);
+            break;
+          case 'escape':
+            // Close all modals
+            setShowPianoRoll(false);
+            setShowMixer(false);
+            setShowSoundLibrary(false);
+            setShowSettings(false);
+            setShowExport(false);
             break;
         }
       }
@@ -711,7 +497,7 @@ const DAWInterfacePage = () => {
 
     window.addEventListener('keydown', handleKeyDown);
     return () => window.removeEventListener('keydown', handleKeyDown);
-  }, [historyIndex, history, tracks, clips, selectedClipIds, editingTrackId, isPlaying, handleSaveProject, handleExportProject, handleClipDelete, handlePlay, handleUndo, handleRedo]);
+  }, [historyIndex, history, selectedClipIds, editingTrackId, handleSaveProject, handleExportProject, handleUndo, handleRedo]);
 
   // Audio engine refs
   const playbackStartTimeRef = useRef(0);
@@ -726,7 +512,7 @@ const DAWInterfacePage = () => {
   // Transport controls with audio
   const handlePlay = () => {
     if (!isPlaying) {
-      isPlayingRef.current = true; // Set ref immediately
+      isPlayingRef.current = true;
       audioEngine.init();
       audioEngine.play();
       audioEngine.setBPM(bpm);
@@ -734,14 +520,8 @@ const DAWInterfacePage = () => {
       audioEngine.setTimeSignature(timeSignature);
       audioEngine.setLoop(loopEnabled, loopStart, loopEnd);
       audioEngine.setMasterVolume(masterVolume);
-      
-      // Schedule clip playback
-      scheduleClipPlayback();
-      
-      // Start time update animation
-      startTimeUpdateLoop();
     } else {
-      isPlayingRef.current = false; // Set ref immediately
+      isPlayingRef.current = false;
       audioEngine.stop();
       cancelAnimationFrame(animationFrameRef.current);
     }
@@ -772,7 +552,6 @@ const DAWInterfacePage = () => {
       const buffer = await audioEngine.stopRecording();
       setIsRecording(false);
       if (buffer) {
-        // Add recorded clip to timeline
         const newClipId = Math.max(...clips.map(c => c.id), 0) + 1;
         const currentTimeSecs = currentTime.split(':').reduce((acc, val, idx) => acc + parseInt(val) * [3600, 60, 1][idx], 0);
         
@@ -792,46 +571,6 @@ const DAWInterfacePage = () => {
         });
       }
     }
-  };
-
-  // Schedule clip playback based on clip data
-  const scheduleClipPlayback = () => {
-    // Simple demo: schedule drum sounds on beats
-    const now = audioEngine.currentAudioTime;
-    
-    // Play kick on beats 1
-    audioEngine.playKick(now + 0.1);
-    
-    // Schedule more if needed
-    if (isPlaying) {
-      setTimeout(scheduleClipPlayback, 500);
-    }
-  };
-
-  // Time update loop
-  const startTimeUpdateLoop = () => {
-    const startPlayhead = playheadTime;
-    const startTime = Date.now();
-    playbackStartTimeRef.current = startTime;
-    
-    const update = () => {
-      if (!isPlayingRef.current) return;
-      
-      const now = Date.now();
-      const elapsed = (now - startTime) / 1000;
-      const totalSeconds = Math.floor(elapsed);
-      const newPlayheadTime = startPlayhead + elapsed;
-      
-      const hours = Math.floor(totalSeconds / 3600);
-      const minutes = Math.floor((totalSeconds % 3600) / 60);
-      const seconds = totalSeconds % 60;
-      
-      setCurrentTime(`${String(hours).padStart(2, '0')}:${String(minutes).padStart(2, '0')}:${String(seconds).padStart(2, '0')}`);
-      setPlayheadTime(newPlayheadTime);
-      
-      animationFrameRef.current = requestAnimationFrame(update);
-    };
-    update();
   };
 
   // Playback controls
@@ -870,7 +609,6 @@ const DAWInterfacePage = () => {
   const handleSnapGridChange = (grid) => setSnapGrid(grid);
 
   const handleQuantize = () => {
-    // Quantize selected clips to snap grid
     if (selectedClipIds.length === 0) return;
     setClips(prev => {
       const newClips = prev.map(c => {
@@ -913,6 +651,7 @@ const DAWInterfacePage = () => {
     setCurrentTime('00:00:00');
     setPlayheadTime(0);
   };
+
   const handleSkipToEnd = () => {
     const maxTime = Math.max(...clips.map(c => c.startTime + c.duration), 0);
     const seconds = Math.floor(maxTime % 60);
@@ -927,7 +666,7 @@ const DAWInterfacePage = () => {
     if (selectedClipIds.length === 0) return;
     const clipsToCut = clips.filter(c => selectedClipIds.includes(c.id));
     setClipboard(clipsToCut);
-    handleClipDelete(selectedClipIds[0]);
+    setClips(prev => prev.filter(c => !selectedClipIds.includes(c.id)));
   };
 
   const handleCopy = () => {
@@ -1169,6 +908,31 @@ const DAWInterfacePage = () => {
       top: `${8 + ((index * 14) % 78)}%`
     }));
 
+  // Mock data for panels
+  const assetLibrary = [
+    { name: 'Kick_808.wav', type: 'Sample', detail: 'One Shot' },
+    { name: 'Snare_Snap.wav', type: 'Sample', detail: 'One Shot' },
+    { name: 'House_Hat_Loop.wav', type: 'Loop', detail: '124 BPM' },
+    { name: 'Deep_Bass_01.wav', type: 'Loop', detail: '8 Bars' },
+    { name: 'Analog_Stab.wav', type: 'Sample', detail: 'One Shot' }
+  ];
+
+  const instrumentLibrary = [
+    { name: 'Analog Poly', family: 'Synth', preset: 'Warm Pad' },
+    { name: 'Mono Bass', family: 'Synth', preset: 'Solid Sub' },
+    { name: 'FM Keys', family: 'Keys', preset: 'Glass Bell' },
+    { name: 'Drum Rack', family: 'Drums', preset: 'Studio Kit' },
+    { name: 'String Ensemble', family: 'Orchestral', preset: 'Wide Layer' }
+  ];
+
+  const effectLibrary = [
+    { name: 'Channel EQ', state: 'On', value: 'HP 90Hz' },
+    { name: 'Compressor', state: 'On', value: '3.0:1' },
+    { name: 'Reverb', state: 'On', value: 'Hall 18%' },
+    { name: 'Delay', state: 'Off', value: '1/8 PingPong' },
+    { name: 'Limiter', state: 'On', value: '-0.8dB' }
+  ];
+
   return (
     <div style={pageStyle}>
       <div style={workspaceFrameStyle}>
@@ -1238,48 +1002,55 @@ const DAWInterfacePage = () => {
             <button
               type="button"
               style={quickNavBtnStyle}
-              onClick={() => navigate(`/daw/${projectId}/piano-roll`)}
+              onClick={() => navigate('/dashboard')}
             >
-              Open Piano Roll Page
+              Dashboard
             </button>
             <button
               type="button"
               style={quickNavBtnStyle}
-              onClick={() => navigate(`/daw/${projectId}/mixer`)}
+              onClick={() => setShowPianoRoll(true)}
             >
-              Open Mixer View
+              Piano Roll (P)
             </button>
             <button
               type="button"
               style={quickNavBtnStyle}
-              onClick={() => navigate(`/daw/${projectId}/sound-library`)}
+              onClick={() => setShowMixer(true)}
             >
-              Sound Library
+              Mixer (M)
             </button>
             <button
               type="button"
               style={quickNavBtnStyle}
-              onClick={() => navigate(`/daw/${projectId}/settings`)}
+              onClick={() => setShowSoundLibrary(true)}
             >
-              Settings
+              Sound Library (L)
             </button>
             <button
               type="button"
               style={quickNavBtnStyle}
-              onClick={() => navigate(`/daw/${projectId}/export`)}
+              onClick={() => setShowSettings(true)}
             >
-              Export
+              Settings (,)
             </button>
-            {studioMessage && <span style={statusAlertStyle}>{studioMessage}</span>}
+            <button
+              type="button"
+              style={quickNavBtnStyle}
+              onClick={() => setShowExport(true)}
+            >
+              Export (E)
+            </button>
+            {studioMessage && <span style={{ color: '#fde68a', fontSize: '12px' }}>{studioMessage}</span>}
             {isCompactLayout && (
               <>
-                <button type="button" style={panelToggleBtnStyle} onClick={() => setShowAssetPanel(prev => !prev)}>
+                <button type="button" style={{ ...quickNavBtnStyle, padding: '4px 8px', fontSize: '10px' }} onClick={() => setShowAssetPanel(prev => !prev)}>
                   {showAssetPanel ? 'Hide Left' : 'Show Left'}
                 </button>
-                <button type="button" style={panelToggleBtnStyle} onClick={() => setShowTrackPanel(prev => !prev)}>
+                <button type="button" style={{ ...quickNavBtnStyle, padding: '4px 8px', fontSize: '10px' }} onClick={() => setShowTrackPanel(prev => !prev)}>
                   {showTrackPanel ? 'Hide Tracks' : 'Show Tracks'}
                 </button>
-                <button type="button" style={panelToggleBtnStyle} onClick={() => setShowInspectorPanel(prev => !prev)}>
+                <button type="button" style={{ ...quickNavBtnStyle, padding: '4px 8px', fontSize: '10px' }} onClick={() => setShowInspectorPanel(prev => !prev)}>
                   {showInspectorPanel ? 'Hide Right' : 'Show Right'}
                 </button>
               </>
@@ -1287,54 +1058,85 @@ const DAWInterfacePage = () => {
           </div>
         </div>
 
-        <div style={isCompactLayout ? compactContentStyle : contentStyle}>
+        <div style={contentStyle}>
           {loading ? (
-            <div style={stateContainerStyle}>
-              <div style={stateCardStyle}>
-                <p style={messageStyle}>Loading project workspace...</p>
-                <p style={helperMessageStyle}>Preparing tracks, timeline, and session controls.</p>
-              </div>
+            <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', height: '400px' }}>
+              <div style={{ color: '#94a3b8', fontSize: '18px' }}>Loading project workspace...</div>
             </div>
           ) : error ? (
-            <div style={stateContainerStyle}>
-              <div style={stateCardStyle}>
-                <p style={messageStyle}>Could not open this project</p>
-                <p style={errorStyle}>{error}</p>
-                <button type="button" style={retryBtnStyle} onClick={fetchProject}>
+            <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', height: '400px' }}>
+              <div style={{ color: '#fecaca', fontSize: '18px', textAlign: 'center' }}>
+                Could not open this project
+                <div style={{ color: '#fecaca', fontSize: '14px', marginTop: '8px' }}>{error}</div>
+                <button 
+                  type="button" 
+                  style={{ 
+                    border: '1px solid rgba(248, 113, 113, 0.55)',
+                    borderRadius: '10px',
+                    padding: '8px 14px',
+                    background: 'rgba(127, 29, 29, 0.46)',
+                    color: '#fee2e2',
+                    cursor: 'pointer',
+                    fontSize: '13px',
+                    fontWeight: 600,
+                    marginTop: '16px'
+                  }} 
+                  onClick={fetchProject}
+                >
                   Retry Load
                 </button>
               </div>
             </div>
           ) : (
             <div style={studioLayoutStyle}>
-              <div style={isCompactLayout ? studioRowCompactStyle : studioRowStyle}>
+              <div style={studioRowStyle}>
                 {(!isCompactLayout || showAssetPanel) && (
-                  <aside style={isCompactLayout ? { ...panelStyle, ...panelCompactStyle } : panelStyle}>
-                    <div style={panelHeaderStyle}>Left Panel</div>
-                    <div style={panelTabRowStyle}>
+                  <aside style={{ ...panelStyle, width: isCompactLayout ? '200px' : '228px' }}>
+                    <div style={{ height: '38px', display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '0 12px', borderBottom: '1px solid rgba(148, 163, 184, 0.2)', fontSize: '12px', textTransform: 'uppercase', letterSpacing: '0.6px', fontWeight: 700, color: '#dbeafe' }}>
+                      Left Panel
+                    </div>
+                    <div style={{ display: 'flex', gap: '6px', padding: '8px 10px 6px' }}>
                       <button
                         type="button"
-                        style={leftPanelTab === 'files' ? panelTabActiveStyle : panelTabStyle}
+                        style={{ 
+                          border: leftPanelTab === 'files' ? '1px solid rgba(96, 165, 250, 0.65)' : '1px solid rgba(148, 163, 184, 0.28)',
+                          borderRadius: '7px',
+                          padding: '4px 8px',
+                          background: leftPanelTab === 'files' ? 'rgba(30, 64, 175, 0.35)' : 'rgba(15, 23, 42, 0.4)',
+                          color: leftPanelTab === 'files' ? '#eff6ff' : '#bfdbfe',
+                          fontSize: '11px',
+                          fontWeight: 600,
+                          cursor: 'pointer'
+                        }}
                         onClick={() => setLeftPanelTab('files')}
                       >
                         Files
                       </button>
                       <button
                         type="button"
-                        style={leftPanelTab === 'instruments' ? panelTabActiveStyle : panelTabStyle}
+                        style={{ 
+                          border: leftPanelTab === 'instruments' ? '1px solid rgba(96, 165, 250, 0.65)' : '1px solid rgba(148, 163, 184, 0.28)',
+                          borderRadius: '7px',
+                          padding: '4px 8px',
+                          background: leftPanelTab === 'instruments' ? 'rgba(30, 64, 175, 0.35)' : 'rgba(15, 23, 42, 0.4)',
+                          color: leftPanelTab === 'instruments' ? '#eff6ff' : '#bfdbfe',
+                          fontSize: '11px',
+                          fontWeight: 600,
+                          cursor: 'pointer'
+                        }}
                         onClick={() => setLeftPanelTab('instruments')}
                       >
                         Instruments
                       </button>
                     </div>
-                    <div style={panelBodyStyle}>
+                    <div style={{ flex: 1, padding: '0 10px 10px', overflowY: 'auto' }}>
                       {(leftPanelTab === 'files' ? assetLibrary : instrumentLibrary).map((item) => (
-                        <div key={item.name} style={panelItemStyle}>
+                        <div key={item.name} style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: '8px', border: '1px solid rgba(148, 163, 184, 0.2)', borderRadius: '8px', padding: '8px 9px', marginBottom: '8px', background: 'rgba(15, 23, 42, 0.44)' }}>
                           <div>
-                            <div style={panelItemTitleStyle}>{item.name}</div>
-                            <div style={panelItemMetaStyle}>{item.type || item.family}</div>
+                            <div style={{ fontSize: '12px', color: '#eff6ff', fontWeight: 600 }}>{item.name}</div>
+                            <div style={{ fontSize: '11px', color: '#93c5fd' }}>{item.type || item.family}</div>
                           </div>
-                          <span style={panelBadgeStyle}>{item.detail || item.preset}</span>
+                          <span style={{ border: '1px solid rgba(148, 163, 184, 0.3)', borderRadius: '999px', padding: '2px 6px', fontSize: '10px', color: '#cbd5e1' }}>{item.detail || item.preset}</span>
                         </div>
                       ))}
                     </div>
@@ -1342,9 +1144,9 @@ const DAWInterfacePage = () => {
                 )}
 
                 <div style={centerWorkspaceStyle}>
-                  <div style={isCompactLayout ? arrangementRowCompactStyle : arrangementRowStyle}>
+                  <div style={arrangementRowStyle}>
                     {(!isCompactLayout || showTrackPanel) && (
-                      <div style={isCompactLayout ? trackWrapCompactStyle : trackWrapStyle}>
+                      <div style={{ ...trackWrapStyle, width: isCompactLayout ? '200px' : null }}>
                         <DAWSidebar
                           compact={isCompactLayout}
                           tracks={tracks}
@@ -1397,21 +1199,48 @@ const DAWInterfacePage = () => {
                       <div style={{ display: 'flex', gap: '6px', flexWrap: 'wrap' }}>
                         <button
                           type="button"
-                          style={panelTabStyle}
-                          onClick={() => navigate(`/daw/${projectId}/piano-roll`)}
+                          style={{ 
+                            border: '1px solid rgba(148, 163, 184, 0.28)',
+                            borderRadius: '7px',
+                            padding: '4px 8px',
+                            background: 'rgba(15, 23, 42, 0.4)',
+                            color: '#bfdbfe',
+                            fontSize: '11px',
+                            fontWeight: 600,
+                            cursor: 'pointer'
+                          }}
+                          onClick={() => setShowPianoRoll(true)}
                         >
-                          Open Full Piano Roll
+                          Open Piano Roll
                         </button>
                         <button
                           type="button"
-                          style={bottomPanelTab === 'piano' ? panelTabActiveStyle : panelTabStyle}
+                          style={{ 
+                            border: bottomPanelTab === 'piano' ? '1px solid rgba(96, 165, 250, 0.65)' : '1px solid rgba(148, 163, 184, 0.28)',
+                            borderRadius: '7px',
+                            padding: '4px 8px',
+                            background: bottomPanelTab === 'piano' ? 'rgba(30, 64, 175, 0.35)' : 'rgba(15, 23, 42, 0.4)',
+                            color: bottomPanelTab === 'piano' ? '#eff6ff' : '#bfdbfe',
+                            fontSize: '11px',
+                            fontWeight: 600,
+                            cursor: 'pointer'
+                          }}
                           onClick={() => setBottomPanelTab('piano')}
                         >
                           Piano Roll
                         </button>
                         <button
                           type="button"
-                          style={bottomPanelTab === 'mixer' ? panelTabActiveStyle : panelTabStyle}
+                          style={{ 
+                            border: bottomPanelTab === 'mixer' ? '1px solid rgba(96, 165, 250, 0.65)' : '1px solid rgba(148, 163, 184, 0.28)',
+                            borderRadius: '7px',
+                            padding: '4px 8px',
+                            background: bottomPanelTab === 'mixer' ? 'rgba(30, 64, 175, 0.35)' : 'rgba(15, 23, 42, 0.4)',
+                            color: bottomPanelTab === 'mixer' ? '#eff6ff' : '#bfdbfe',
+                            fontSize: '11px',
+                            fontWeight: 600,
+                            cursor: 'pointer'
+                          }}
                           onClick={() => setBottomPanelTab('mixer')}
                         >
                           Mixer
@@ -1420,7 +1249,7 @@ const DAWInterfacePage = () => {
                     </div>
                     <div style={bottomBodyStyle}>
                       {bottomPanelTab === 'piano' ? (
-                        <div style={pianoRollGridStyle}>
+                        <div style={{ height: '100%', borderRadius: '10px', border: '1px solid rgba(148, 163, 184, 0.22)', background: 'repeating-linear-gradient(0deg, rgba(148, 163, 184, 0.08) 0px, rgba(148, 163, 184, 0.08) 1px, transparent 1px, transparent 22px), repeating-linear-gradient(90deg, rgba(148, 163, 184, 0.08) 0px, rgba(148, 163, 184, 0.08) 1px, transparent 1px, transparent 56px)', position: 'relative', overflow: 'hidden' }}>
                           {pianoRollNotes.length === 0 ? (
                             <div style={{ position: 'absolute', inset: 0, display: 'flex', alignItems: 'center', justifyContent: 'center', color: '#93c5fd', fontSize: '13px' }}>
                               Add a MIDI clip in the timeline to populate piano notes.
@@ -1429,95 +1258,115 @@ const DAWInterfacePage = () => {
                             pianoRollNotes.map(note => (
                               <div
                                 key={note.id}
-                                style={{ ...pianoNoteStyle, left: note.left, width: note.width, top: note.top }}
+                                style={{ position: 'absolute', height: '14px', borderRadius: '4px', background: 'linear-gradient(90deg, #3b82f6 0%, #1d4ed8 100%)', border: '1px solid rgba(191, 219, 254, 0.6)', left: note.left, width: note.width, top: note.top }}
                                 title="MIDI Note Block"
                               />
                             ))
                           )}
                         </div>
                       ) : (
-                        <>
-                          <div style={mixerHeadRowStyle}>
-                            <span>Track</span>
-                            <span>Type</span>
-                            <span>Volume</span>
-                            <span>Pan</span>
-                            <span>State</span>
+                        <div>
+                          <div style={{ display: 'grid', gridTemplateColumns: 'minmax(130px, 1fr) 120px 120px 120px 120px', gap: '10px', padding: '8px 10px', borderRadius: '8px', border: '1px solid rgba(148, 163, 184, 0.2)', background: 'rgba(15, 23, 42, 0.44)', marginBottom: '8px', alignItems: 'center' }}>
+                            <span style={{ fontSize: '12px', color: '#e2e8f0', fontWeight: 700 }}>Track</span>
+                            <span style={{ fontSize: '12px', color: '#e2e8f0', fontWeight: 700 }}>Type</span>
+                            <span style={{ fontSize: '12px', color: '#e2e8f0', fontWeight: 700 }}>Volume</span>
+                            <span style={{ fontSize: '12px', color: '#e2e8f0', fontWeight: 700 }}>Pan</span>
+                            <span style={{ fontSize: '12px', color: '#e2e8f0', fontWeight: 700 }}>State</span>
                           </div>
                           {tracks.map(track => (
-                            <div key={track.id} style={mixerRowStyle}>
-                              <span style={mixerTrackCellStyle}>{track.name}</span>
-                              <span style={mixerValueStyle}>{track.type.toUpperCase()}</span>
-                              <span style={mixerValueStyle}>{track.volume ?? 80}%</span>
-                              <span style={mixerValueStyle}>{track.pan ?? 0}</span>
-                              <span style={mixerValueStyle}>{track.muted ? 'Muted' : track.solo ? 'Solo' : 'Active'}</span>
+                            <div key={track.id} style={{ display: 'grid', gridTemplateColumns: 'minmax(130px, 1fr) 120px 120px 120px 120px', gap: '10px', padding: '8px 10px', borderRadius: '8px', border: '1px solid rgba(148, 163, 184, 0.2)', background: 'rgba(15, 23, 42, 0.44)', marginBottom: '8px', alignItems: 'center' }}>
+                              <span style={{ fontSize: '12px', color: '#e2e8f0', fontWeight: 700 }}>{track.name}</span>
+                              <span style={{ fontSize: '12px', color: '#cbd5e1' }}>{track.type.toUpperCase()}</span>
+                              <span style={{ fontSize: '12px', color: '#cbd5e1' }}>{track.volume ?? 80}%</span>
+                              <span style={{ fontSize: '12px', color: '#cbd5e1' }}>{track.pan ?? 0}</span>
+                              <span style={{ fontSize: '12px', color: '#cbd5e1' }}>{track.muted ? 'Muted' : track.solo ? 'Solo' : 'Active'}</span>
                             </div>
                           ))}
-                        </>
+                        </div>
                       )}
                     </div>
                   </div>
                 </div>
 
                 {(!isCompactLayout || showInspectorPanel) && (
-                  <aside style={isCompactLayout ? { ...rightPanelStyle, ...rightPanelCompactStyle } : rightPanelStyle}>
-                    <div style={panelHeaderStyle}>Right Panel</div>
-                    <div style={panelTabRowStyle}>
+                  <aside style={{ ...rightPanelStyle, width: isCompactLayout ? '220px' : '248px' }}>
+                    <div style={{ height: '38px', display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '0 12px', borderBottom: '1px solid rgba(148, 163, 184, 0.2)', fontSize: '12px', textTransform: 'uppercase', letterSpacing: '0.6px', fontWeight: 700, color: '#dbeafe' }}>
+                      Right Panel
+                    </div>
+                    <div style={{ display: 'flex', gap: '6px', padding: '8px 10px 6px' }}>
                       <button
                         type="button"
-                        style={rightPanelTab === 'effects' ? panelTabActiveStyle : panelTabStyle}
+                        style={{ 
+                          border: rightPanelTab === 'effects' ? '1px solid rgba(96, 165, 250, 0.65)' : '1px solid rgba(148, 163, 184, 0.28)',
+                          borderRadius: '7px',
+                          padding: '4px 8px',
+                          background: rightPanelTab === 'effects' ? 'rgba(30, 64, 175, 0.35)' : 'rgba(15, 23, 42, 0.4)',
+                          color: rightPanelTab === 'effects' ? '#eff6ff' : '#bfdbfe',
+                          fontSize: '11px',
+                          fontWeight: 600,
+                          cursor: 'pointer'
+                        }}
                         onClick={() => setRightPanelTab('effects')}
                       >
                         Effects
                       </button>
                       <button
                         type="button"
-                        style={rightPanelTab === 'settings' ? panelTabActiveStyle : panelTabStyle}
+                        style={{ 
+                          border: rightPanelTab === 'settings' ? '1px solid rgba(96, 165, 250, 0.65)' : '1px solid rgba(148, 163, 184, 0.28)',
+                          borderRadius: '7px',
+                          padding: '4px 8px',
+                          background: rightPanelTab === 'settings' ? 'rgba(30, 64, 175, 0.35)' : 'rgba(15, 23, 42, 0.4)',
+                          color: rightPanelTab === 'settings' ? '#eff6ff' : '#bfdbfe',
+                          fontSize: '11px',
+                          fontWeight: 600,
+                          cursor: 'pointer'
+                        }}
                         onClick={() => setRightPanelTab('settings')}
                       >
                         Track Settings
                       </button>
                     </div>
-                    <div style={panelBodyStyle}>
+                    <div style={{ flex: 1, padding: '0 10px 10px', overflowY: 'auto' }}>
                       {rightPanelTab === 'effects' ? (
                         effectLibrary.map(effect => (
-                          <div key={effect.name} style={panelItemStyle}>
+                          <div key={effect.name} style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: '8px', border: '1px solid rgba(148, 163, 184, 0.2)', borderRadius: '8px', padding: '8px 9px', marginBottom: '8px', background: 'rgba(15, 23, 42, 0.44)' }}>
                             <div>
-                              <div style={panelItemTitleStyle}>{effect.name}</div>
-                              <div style={panelItemMetaStyle}>{effect.value}</div>
+                              <div style={{ fontSize: '12px', color: '#eff6ff', fontWeight: 600 }}>{effect.name}</div>
+                              <div style={{ fontSize: '11px', color: '#93c5fd' }}>{effect.value}</div>
                             </div>
-                            <span style={panelBadgeStyle}>{effect.state}</span>
+                            <span style={{ border: '1px solid rgba(148, 163, 184, 0.3)', borderRadius: '999px', padding: '2px 6px', fontSize: '10px', color: '#cbd5e1' }}>{effect.state}</span>
                           </div>
                         ))
                       ) : (
                         <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
-                          <div style={panelItemStyle}>
+                          <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: '8px', border: '1px solid rgba(148, 163, 184, 0.2)', borderRadius: '8px', padding: '8px 9px', marginBottom: '8px', background: 'rgba(15, 23, 42, 0.44)' }}>
                             <div>
-                              <div style={panelItemTitleStyle}>Selected Track</div>
-                              <div style={panelItemMetaStyle}>{selectedTrack?.name || 'None selected'}</div>
+                              <div style={{ fontSize: '12px', color: '#eff6ff', fontWeight: 600 }}>Selected Track</div>
+                              <div style={{ fontSize: '11px', color: '#93c5fd' }}>{selectedTrack?.name || 'None selected'}</div>
                             </div>
-                            <span style={panelBadgeStyle}>{selectedTrack?.type || 'n/a'}</span>
+                            <span style={{ border: '1px solid rgba(148, 163, 184, 0.3)', borderRadius: '999px', padding: '2px 6px', fontSize: '10px', color: '#cbd5e1' }}>{selectedTrack?.type || 'n/a'}</span>
                           </div>
-                          <div style={panelItemStyle}>
+                          <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: '8px', border: '1px solid rgba(148, 163, 184, 0.2)', borderRadius: '8px', padding: '8px 9px', marginBottom: '8px', background: 'rgba(15, 23, 42, 0.44)' }}>
                             <div>
-                              <div style={panelItemTitleStyle}>Volume</div>
-                              <div style={panelItemMetaStyle}>{selectedTrack?.volume ?? 80}%</div>
+                              <div style={{ fontSize: '12px', color: '#eff6ff', fontWeight: 600 }}>Volume</div>
+                              <div style={{ fontSize: '11px', color: '#93c5fd' }}>{selectedTrack?.volume ?? 80}%</div>
                             </div>
-                            <span style={panelBadgeStyle}>Track</span>
+                            <span style={{ border: '1px solid rgba(148, 163, 184, 0.3)', borderRadius: '999px', padding: '2px 6px', fontSize: '10px', color: '#cbd5e1' }}>Track</span>
                           </div>
-                          <div style={panelItemStyle}>
+                          <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: '8px', border: '1px solid rgba(148, 163, 184, 0.2)', borderRadius: '8px', padding: '8px 9px', marginBottom: '8px', background: 'rgba(15, 23, 42, 0.44)' }}>
                             <div>
-                              <div style={panelItemTitleStyle}>Pan</div>
-                              <div style={panelItemMetaStyle}>{selectedTrack?.pan ?? 0}</div>
+                              <div style={{ fontSize: '12px', color: '#eff6ff', fontWeight: 600 }}>Pan</div>
+                              <div style={{ fontSize: '11px', color: '#93c5fd' }}>{selectedTrack?.pan ?? 0}</div>
                             </div>
-                            <span style={panelBadgeStyle}>L/R</span>
+                            <span style={{ border: '1px solid rgba(148, 163, 184, 0.3)', borderRadius: '999px', padding: '2px 6px', fontSize: '10px', color: '#cbd5e1' }}>L/R</span>
                           </div>
-                          <div style={panelItemStyle}>
+                          <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: '8px', border: '1px solid rgba(148, 163, 184, 0.2)', borderRadius: '8px', padding: '8px 9px', marginBottom: '8px', background: 'rgba(15, 23, 42, 0.44)' }}>
                             <div>
-                              <div style={panelItemTitleStyle}>Monitoring</div>
-                              <div style={panelItemMetaStyle}>{selectedTrack?.armed ? 'Armed for recording' : 'Input monitor off'}</div>
+                              <div style={{ fontSize: '12px', color: '#eff6ff', fontWeight: 600 }}>Monitoring</div>
+                              <div style={{ fontSize: '11px', color: '#93c5fd' }}>{selectedTrack?.armed ? 'Armed for recording' : 'Input monitor off'}</div>
                             </div>
-                            <span style={panelBadgeStyle}>{selectedTrack?.armed ? 'REC' : 'IDLE'}</span>
+                            <span style={{ border: '1px solid rgba(148, 163, 184, 0.3)', borderRadius: '999px', padding: '2px 6px', fontSize: '10px', color: '#cbd5e1' }}>{selectedTrack?.armed ? 'REC' : 'IDLE'}</span>
                           </div>
                         </div>
                       )}
@@ -1529,8 +1378,65 @@ const DAWInterfacePage = () => {
           )}
         </div>
       </div>
+
+      {/* Modals */}
+      {showPianoRoll && (
+        <div style={modalOverlayStyle} onClick={() => setShowPianoRoll(false)}>
+          <div style={modalContentStyle} onClick={(e) => e.stopPropagation()}>
+            <PianoRollModal 
+              tracks={tracks}
+              clips={clips.filter(c => c.type === 'midi')}
+              onClose={() => setShowPianoRoll(false)}
+            />
+          </div>
+        </div>
+      )}
+
+      {showMixer && (
+        <div style={modalOverlayStyle} onClick={() => setShowMixer(false)}>
+          <div style={modalContentStyle} onClick={(e) => e.stopPropagation()}>
+            <MixerModal 
+              tracks={tracks}
+              onClose={() => setShowMixer(false)}
+            />
+          </div>
+        </div>
+      )}
+
+      {showSoundLibrary && (
+        <div style={modalOverlayStyle} onClick={() => setShowSoundLibrary(false)}>
+          <div style={modalContentStyle} onClick={(e) => e.stopPropagation()}>
+            <SoundLibraryModal 
+              onClose={() => setShowSoundLibrary(false)}
+            />
+          </div>
+        </div>
+      )}
+
+      {showSettings && (
+        <div style={modalOverlayStyle} onClick={() => setShowSettings(false)}>
+          <div style={modalContentStyle} onClick={(e) => e.stopPropagation()}>
+            <SettingsModal 
+              onClose={() => setShowSettings(false)}
+            />
+          </div>
+        </div>
+      )}
+
+      {showExport && (
+        <div style={modalOverlayStyle} onClick={() => setShowExport(false)}>
+          <div style={modalContentStyle} onClick={(e) => e.stopPropagation()}>
+            <ExportModal 
+              tracks={tracks}
+              clips={clips}
+              projectName={projectName}
+              onClose={() => setShowExport(false)}
+            />
+          </div>
+        </div>
+      )}
     </div>
   );
 };
 
-export default DAWInterfacePage;
+export default DAWEditorPage;

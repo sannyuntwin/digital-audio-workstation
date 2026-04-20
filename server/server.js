@@ -8,17 +8,14 @@ const express = require('express');
 const http = require('http');
 const socketIo = require('socket.io');
 const cors = require('cors');
-const helmet = require('helmet');
 const morgan = require('morgan');
 const path = require('path');
-const fs = require('fs-extra');
 
 // Import database
 const { db, testConnection } = require('./src/config/database');
 
 // Import routes
 const projectRoutes = require('./src/routes/projects');
-const audioRoutes = require('./src/routes/audio');
 const authRoutes = require('./src/routes/auth');
 
 // Import middleware
@@ -38,28 +35,24 @@ const io = socketIo(server, {
 });
 
 // Middleware
-app.use(helmet({
-  crossOriginResourcePolicy: { policy: "cross-origin" }
-}));
+// app.use(helmet({
+//   crossOriginResourcePolicy: { policy: "cross-origin" },
+//   contentSecurityPolicy: false
+// }));
 
 app.use(cors({
   origin: process.env.CLIENT_URL || "http://localhost:3000",
-  credentials: true
+  credentials: true,
+  methods: ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS'],
+  allowedHeaders: ['Content-Type', 'Authorization']
 }));
 
 app.use(morgan('combined'));
 app.use(express.json({ limit: '50mb' }));
 app.use(express.urlencoded({ extended: true, limit: '50mb' }));
 
-// Static file serving for uploads
-app.use('/uploads', express.static(path.join(__dirname, 'uploads')));
-
-// Ensure uploads directory exists
-fs.ensureDirSync(path.join(__dirname, 'uploads'));
-
 // API Routes
 app.use('/api/projects', projectRoutes);
-app.use('/api/audio', audioRoutes);
 app.use('/api/auth', authRoutes);
 
 // Health check endpoint

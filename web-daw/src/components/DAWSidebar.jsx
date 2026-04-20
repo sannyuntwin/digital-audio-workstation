@@ -109,12 +109,6 @@ const trackNameStyle = {
   textOverflow: 'ellipsis'
 };
 
-const trackTypeStyle = {
-  fontSize: '11px',
-  color: '#6b6b75',
-  marginTop: '2px'
-};
-
 const trackControlsStyle = {
   display: 'flex',
   alignItems: 'center',

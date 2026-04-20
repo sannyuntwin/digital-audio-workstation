@@ -187,6 +187,39 @@ const volumeSliderStyle = {
   cursor: 'pointer'
 };
 
+const actionBtnStyle = {
+  height: '32px',
+  borderRadius: '6px',
+  border: '1px solid #3f4550',
+  padding: '0 12px',
+  background: '#20262f',
+  color: '#e8edf7',
+  fontSize: '12px',
+  fontWeight: 700,
+  cursor: 'pointer',
+  letterSpacing: '0.2px'
+};
+
+const saveBtnStyle = {
+  ...actionBtnStyle,
+  borderColor: '#3f7a54',
+  background: '#193327',
+  color: '#c8f8d8'
+};
+
+const exportBtnStyle = {
+  ...actionBtnStyle,
+  borderColor: '#4a607e',
+  background: '#172436',
+  color: '#d6e8ff'
+};
+
+const statusTextStyle = {
+  fontSize: '11px',
+  color: '#9fb0c4',
+  minWidth: '56px'
+};
+
 const timeSigStyle = {
   display: 'flex',
   alignItems: 'center',
@@ -306,9 +339,12 @@ const DAWToolbar = ({
   onTapTempo,
   onTimeSignatureChange,
   onQuantize,
-  onMasterVolumeChange
+  onMasterVolumeChange,
+  onSave,
+  onExport,
+  saveStatus = 'idle'
 }) => {
-  const [tapTimes, setTapTimes] = useState([]);
+  const [, setTapTimes] = useState([]);
   const tapTimeoutRef = useRef(null);
 
   const handleTapTempo = useCallback(() => {
@@ -529,6 +565,18 @@ const DAWToolbar = ({
 
       {/* Right: Zoom + Master Volume */}
       <div style={toolbarRightStyle}>
+        <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
+          <button style={saveBtnStyle} onClick={onSave} title="Save Project (Ctrl+S)">
+            Save
+          </button>
+          <button style={exportBtnStyle} onClick={onExport} title="Export Session">
+            Export
+          </button>
+          <span style={statusTextStyle}>
+            {saveStatus === 'saving' ? 'Saving...' : saveStatus === 'saved' ? 'Saved' : saveStatus === 'error' ? 'Error' : 'Ready'}
+          </span>
+        </div>
+
         {/* Zoom Controls */}
         <div style={zoomGroupStyle}>
           <button style={iconBtnStyle} onClick={onZoomOut} title="Zoom Out">-</button>
