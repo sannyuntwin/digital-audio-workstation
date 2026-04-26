@@ -190,19 +190,18 @@ const DAWTimeline = ({
   onClipMove,
   onClipResize,
   onClipsSelected,
-  onScrollSync
+  onScrollSync,
+  onExternalAudioDrop
 }) => {
   const rulerRef = useRef(null);
   const bodyRef = useRef(null);
   const [scrollLeft, setScrollLeft] = useState(0);
-  const [scrollTop, setScrollTop] = useState(0);
 
   // Drag state
   const [isDragging, setIsDragging] = useState(false);
   const [dragClip, setDragClip] = useState(null);
   const [dragStartX, setDragStartX] = useState(0);
   const [dragOriginalStart, setDragOriginalStart] = useState(0);
-  const [dragOriginalTrackId, setDragOriginalTrackId] = useState(null);
 
   // Resize state
   const [isResizing, setIsResizing] = useState(false);
@@ -217,6 +216,7 @@ const DAWTimeline = ({
 
   // Clipboard for copy/paste
   const [clipboard, setClipboard] = useState(null);
+  const [dropLaneTrackId, setDropLaneTrackId] = useState(null);
 
   const scale = (zoom / 100) * pixelsPerSecond;
   const totalWidth = duration * scale;
@@ -291,7 +291,6 @@ const DAWTimeline = ({
 
   const handleScroll = (e) => {
     setScrollLeft(e.target.scrollLeft);
-    setScrollTop(e.target.scrollTop);
     onScrollSync?.(e.target.scrollTop);
   };
 
@@ -307,7 +306,7 @@ const DAWTimeline = ({
       const rect = bodyRef.current.getBoundingClientRect();
       const x = e.clientX - rect.left + bodyRef.current.scrollLeft;
       const time = snapTime(x / scale);
-      const trackId = parseInt(e.target.closest('.track-lane').dataset.trackId);
+      const trackId = e.target.closest('.track-lane').dataset.trackId;
       onAddClip?.(trackId, time);
       return;
     }
@@ -317,6 +316,64 @@ const DAWTimeline = ({
     const time = x / scale;
     onTimelineClick?.(time);
   };
+
+  const getAudioFilesFromDataTransfer = useCallback((dataTransfer) => {
+    const files = Array.from(dataTransfer?.files || []);
+    if (files.length === 0) return [];
+    return files.filter((file) => {
+      if (typeof file?.type === 'string' && file.type.startsWith('audio/')) return true;
+      const name = String(file?.name || '').toLowerCase();
+      return /\.(wav|mp3|ogg|flac|aac|m4a|webm)$/i.test(name);
+    });
+  }, []);
+
+  const resolveDropTrackAndTime = useCallback((event) => {
+    const body = bodyRef.current;
+    if (!body) return { trackId: null, startTime: 0 };
+
+    const laneElement = event.target?.closest?.('.track-lane');
+    const laneTrackId = laneElement?.dataset?.trackId || null;
+    const fallbackTrackId = tracks[0]?.id || null;
+    const trackId = laneTrackId || fallbackTrackId;
+
+    const rect = body.getBoundingClientRect();
+    const x = event.clientX - rect.left + body.scrollLeft;
+    const startTime = Math.max(0, snapTime(x / scale));
+    return { trackId, startTime };
+  }, [tracks, scale, snapTime]);
+
+  const handleTimelineDragOver = useCallback((event) => {
+    const audioFiles = getAudioFilesFromDataTransfer(event.dataTransfer);
+    if (audioFiles.length === 0) return;
+
+    event.preventDefault();
+    event.dataTransfer.dropEffect = 'copy';
+    const laneElement = event.target?.closest?.('.track-lane');
+    setDropLaneTrackId(laneElement?.dataset?.trackId || null);
+  }, [getAudioFilesFromDataTransfer]);
+
+  const handleTimelineDrop = useCallback((event) => {
+    const audioFiles = getAudioFilesFromDataTransfer(event.dataTransfer);
+    if (audioFiles.length === 0) return;
+
+    event.preventDefault();
+    event.stopPropagation();
+    const { trackId, startTime } = resolveDropTrackAndTime(event);
+    setDropLaneTrackId(null);
+
+    if (!trackId) return;
+    onExternalAudioDrop?.({
+      trackId,
+      startTime,
+      files: audioFiles
+    });
+  }, [getAudioFilesFromDataTransfer, onExternalAudioDrop, resolveDropTrackAndTime]);
+
+  const handleTimelineDragLeave = useCallback((event) => {
+    if (!event.currentTarget.contains(event.relatedTarget)) {
+      setDropLaneTrackId(null);
+    }
+  }, []);
 
   // Clip selection with multi-select support
   const handleClipClick = (e, clip) => {
@@ -361,7 +418,6 @@ const DAWTimeline = ({
     setDragClip(clip);
     setDragStartX(e.clientX);
     setDragOriginalStart(clip.startTime);
-    setDragOriginalTrackId(clip.trackId);
   };
 
   const handleMouseMove = useCallback((e) => {
@@ -382,7 +438,6 @@ const DAWTimeline = ({
     }
 
     if (isResizing && resizeClip && bodyRef.current) {
-      const rect = bodyRef.current.getBoundingClientRect();
       const deltaX = e.clientX - resizeStartX;
       const deltaTime = deltaX / scale;
 
@@ -397,7 +452,7 @@ const DAWTimeline = ({
         }
       }
     }
-  }, [isDragging, dragClip, dragStartX, dragOriginalStart, dragOriginalTrackId, scale, snapTime, tracks, onClipMove, isResizing, resizeClip, resizeEdge, resizeStartX, resizeOriginalStart, resizeOriginalDuration, onClipResize]);
+  }, [isDragging, dragClip, dragStartX, dragOriginalStart, scale, snapTime, tracks, onClipMove, isResizing, resizeClip, resizeEdge, resizeStartX, resizeOriginalStart, resizeOriginalDuration, onClipResize]);
 
   const handleMouseUp = useCallback(() => {
     setIsDragging(false);
@@ -464,6 +519,8 @@ const DAWTimeline = ({
         break;
       case 'duplicate':
         onAddClip?.(clip.trackId, clip.startTime + clip.duration);
+        break;
+      default:
         break;
     }
     setContextMenu(null);
@@ -538,6 +595,9 @@ const DAWTimeline = ({
         style={timelineBodyStyle}
         onScroll={handleScroll}
         onClick={handleTimelineClick}
+        onDragOver={handleTimelineDragOver}
+        onDrop={handleTimelineDrop}
+        onDragLeave={handleTimelineDragLeave}
       >
         <div style={{ width: totalWidth, minHeight: '100%', position: 'relative' }}>
           {/* Loop highlight in body */}
@@ -550,7 +610,16 @@ const DAWTimeline = ({
               key={track.id}
               data-track-id={track.id}
               className="track-lane"
-              style={index % 2 === 0 ? trackLaneStyle : trackLaneAltStyle}
+              style={{
+                ...(index % 2 === 0 ? trackLaneStyle : trackLaneAltStyle),
+                ...(dropLaneTrackId === String(track.id) || dropLaneTrackId === track.id
+                  ? {
+                    outline: '2px dashed rgba(79, 195, 247, 0.85)',
+                    outlineOffset: '-2px',
+                    background: 'linear-gradient(to bottom, rgba(37, 99, 235, 0.26) 0%, rgba(15, 23, 42, 0.72) 100%)'
+                  }
+                  : {})
+              }}
             >
               {clips
                 .filter(clip => clip.trackId === track.id)

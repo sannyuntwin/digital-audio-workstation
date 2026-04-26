@@ -1,6 +1,7 @@
-import React, { useState, useRef, useEffect } from 'react';
+import React, { useState, useRef, useEffect, useMemo, useCallback } from 'react';
 import { useNavigate, useParams } from 'react-router-dom';
 import DAWToolbar from '../components/DAWToolbar';
+import apiService from '../services/apiService';
 
 // ============ STYLES ============
 const pageStyle = {
@@ -51,13 +52,28 @@ const titleStyle = {
   textTransform: 'uppercase'
 };
 
+const statusMessageStyle = {
+  borderWidth: '1px',
+  borderStyle: 'solid',
+  borderColor: 'rgba(96, 165, 250, 0.45)',
+  borderRadius: '8px',
+  background: 'rgba(30, 64, 175, 0.28)',
+  color: '#dbeafe',
+  fontSize: '12px',
+  fontWeight: 600,
+  padding: '8px 10px',
+  marginBottom: '12px'
+};
+
 const viewToggleStyle = {
   display: 'flex',
   gap: '8px'
 };
 
 const toggleBtnStyle = {
-  border: '1px solid rgba(148, 163, 184, 0.28)',
+  borderWidth: '1px',
+  borderStyle: 'solid',
+  borderColor: 'rgba(148, 163, 184, 0.28)',
   borderRadius: '8px',
   padding: '8px 16px',
   background: 'rgba(15, 23, 42, 0.4)',
@@ -90,7 +106,9 @@ const sidebarStyle = {
 };
 
 const uploadSectionStyle = {
-  border: '2px dashed rgba(148, 163, 184, 0.4)',
+  borderWidth: '2px',
+  borderStyle: 'dashed',
+  borderColor: 'rgba(148, 163, 184, 0.4)',
   borderRadius: '12px',
   padding: '24px',
   textAlign: 'center',
@@ -131,7 +149,9 @@ const filterSectionStyle = {
   background: 'rgba(15, 23, 42, 0.6)',
   borderRadius: '12px',
   padding: '16px',
-  border: '1px solid rgba(148, 163, 184, 0.2)'
+  borderWidth: '1px',
+  borderStyle: 'solid',
+  borderColor: 'rgba(148, 163, 184, 0.2)'
 };
 
 const filterTitleStyle = {
@@ -151,7 +171,9 @@ const tagContainerStyle = {
 };
 
 const tagStyle = {
-  border: '1px solid rgba(148, 163, 184, 0.3)',
+  borderWidth: '1px',
+  borderStyle: 'solid',
+  borderColor: 'rgba(148, 163, 184, 0.3)',
   borderRadius: '20px',
   padding: '4px 12px',
   background: 'rgba(15, 23, 42, 0.4)',
@@ -172,7 +194,9 @@ const tagActiveStyle = {
 const searchBoxStyle = {
   width: '100%',
   padding: '8px 12px',
-  border: '1px solid rgba(148, 163, 184, 0.3)',
+  borderWidth: '1px',
+  borderStyle: 'solid',
+  borderColor: 'rgba(148, 163, 184, 0.3)',
   borderRadius: '8px',
   background: 'rgba(8, 12, 18, 0.6)',
   color: '#f5f7fa',
@@ -199,7 +223,9 @@ const libraryGridStyle = {
 };
 
 const assetCardStyle = {
-  border: '1px solid rgba(148, 163, 184, 0.2)',
+  borderWidth: '1px',
+  borderStyle: 'solid',
+  borderColor: 'rgba(148, 163, 184, 0.2)',
   borderRadius: '12px',
   background: 'rgba(15, 23, 42, 0.6)',
   padding: '12px',
@@ -280,7 +306,9 @@ const assetActionsStyle = {
 
 const actionBtnStyle = {
   flex: 1,
-  border: '1px solid rgba(148, 163, 184, 0.3)',
+  borderWidth: '1px',
+  borderStyle: 'solid',
+  borderColor: 'rgba(148, 163, 184, 0.3)',
   borderRadius: '6px',
   padding: '4px 8px',
   background: 'rgba(15, 23, 42, 0.4)',
@@ -328,187 +356,180 @@ const emptyStateTextStyle = {
   textAlign: 'center'
 };
 
-// Sample data
-const initialAssets = [
-  {
-    id: 1,
-    name: 'Kick_808_Heavy',
-    type: 'audio',
-    format: 'wav',
-    duration: '0.5s',
-    size: '2.1 MB',
-    tags: ['drums', 'kick', '808', 'heavy'],
-    bpm: 120,
-    key: 'C',
-    uploaded: new Date('2024-01-15')
-  },
-  {
-    id: 2,
-    name: 'Snare_Punchy',
-    type: 'audio',
-    format: 'wav',
-    duration: '0.3s',
-    size: '1.8 MB',
-    tags: ['drums', 'snare', 'punchy'],
-    bpm: 120,
-    key: 'C',
-    uploaded: new Date('2024-01-14')
-  },
-  {
-    id: 3,
-    name: 'HiHat_Closed_16th',
-    type: 'audio',
-    format: 'wav',
-    duration: '0.1s',
-    size: '0.8 MB',
-    tags: ['drums', 'hihat', 'closed'],
-    bpm: 120,
-    key: 'C',
-    uploaded: new Date('2024-01-13')
-  },
-  {
-    id: 4,
-    name: 'Bass_Sub_Drop',
-    type: 'audio',
-    format: 'wav',
-    duration: '2.0s',
-    size: '4.2 MB',
-    tags: ['bass', 'sub', 'drop'],
-    bpm: 140,
-    key: 'G',
-    uploaded: new Date('2024-01-12')
-  },
-  {
-    id: 5,
-    name: 'Synth_Lead_Arpeggio',
-    type: 'audio',
-    format: 'wav',
-    duration: '4.0s',
-    size: '6.8 MB',
-    tags: ['synth', 'lead', 'melody'],
-    bpm: 128,
-    key: 'Am',
-    uploaded: new Date('2024-01-11')
-  },
-  {
-    id: 6,
-    name: 'Vocal_Chops_Phrase',
-    type: 'audio',
-    format: 'wav',
-    duration: '1.5s',
-    size: '3.2 MB',
-    tags: ['vocal', 'chops', 'phrase'],
-    bpm: 90,
-    key: 'F',
-    uploaded: new Date('2024-01-10')
-  },
-  {
-    id: 7,
-    name: 'Drum_Loop_HipHop',
-    type: 'audio',
-    format: 'wav',
-    duration: '4.0s',
-    size: '7.1 MB',
-    tags: ['drums', 'loop', 'hiphop'],
-    bpm: 90,
-    key: 'C',
-    uploaded: new Date('2024-01-09')
-  },
-  {
-    id: 8,
-    name: 'Pad_Atmospheric_Wash',
-    type: 'audio',
-    format: 'wav',
-    duration: '8.0s',
-    size: '12.4 MB',
-    tags: ['pad', 'atmospheric', 'wash'],
-    bpm: 0,
-    key: 'Dm',
-    uploaded: new Date('2024-01-08')
-  }
-];
+const API_BASE_URL = process.env.REACT_APP_API_URL || 'http://localhost:8000';
 
-const availableTags = [
-  'drums', 'bass', 'synth', 'vocal', 'loop', 'kick', 'snare', 'hihat',
-  'lead', 'pad', 'melody', 'chops', 'phrase', '808', 'sub', 'atmospheric',
-  'punchy', 'heavy', 'closed', 'drop', 'arpeggio', 'hiphop', 'wash'
-];
+const formatBytes = (value) => {
+  if (!Number.isFinite(value) || value <= 0) return '0 B';
+  const units = ['B', 'KB', 'MB', 'GB'];
+  let size = value;
+  let unitIndex = 0;
+  while (size >= 1024 && unitIndex < units.length - 1) {
+    size /= 1024;
+    unitIndex += 1;
+  }
+  const precision = unitIndex === 0 ? 0 : 1;
+  return `${size.toFixed(precision)} ${units[unitIndex]}`;
+};
+
+const mapAudioFileToAsset = (audioFile, token) => {
+  const mimeType = audioFile.mime_type || '';
+  const format = (audioFile.file_name?.split('.').pop() || mimeType.split('/')[1] || 'audio').toLowerCase();
+  const durationValue = Number(audioFile.duration);
+  const duration = Number.isFinite(durationValue) && durationValue > 0 ? `${durationValue.toFixed(1)}s` : 'Unknown';
+  const metadata = audioFile.metadata || {};
+
+  return {
+    id: audioFile.id || audioFile.file_name,
+    fileName: audioFile.file_name,
+    filePath: audioFile.file_path,
+    name: audioFile.original_name || audioFile.file_name,
+    type: 'audio',
+    format,
+    duration,
+    size: formatBytes(Number(audioFile.file_size)),
+    fileSize: Number(audioFile.file_size) || null,
+    sampleRate: Number(audioFile.sample_rate) || null,
+    bitDepth: Number(audioFile.bit_depth) || null,
+    channels: Number(audioFile.channels) || null,
+    tags: [format, 'uploaded'],
+    bpm: Number(metadata.bpm || 0),
+    key: metadata.key || '-',
+    uploaded: audioFile.uploaded_at ? new Date(audioFile.uploaded_at) : new Date(),
+    previewUrl: audioFile.file_name && token
+      ? `${API_BASE_URL}/api/audio/stream/${audioFile.file_name}?token=${encodeURIComponent(token)}`
+      : null
+  };
+};
+
+const parseAssetDuration = (duration) => {
+  if (typeof duration === 'number' && Number.isFinite(duration)) {
+    return Math.max(duration, 0.25);
+  }
+
+  if (typeof duration === 'string') {
+    const numericValue = Number.parseFloat(duration.replace(/[^0-9.]/g, ''));
+    if (Number.isFinite(numericValue) && numericValue > 0) {
+      return numericValue;
+    }
+  }
+
+  return 4;
+};
 
 const SoundLibraryPage = () => {
   const navigate = useNavigate();
   const { projectId } = useParams();
   
-  const [assets, setAssets] = useState(initialAssets);
-  const [filteredAssets, setFilteredAssets] = useState(initialAssets);
+  const [assets, setAssets] = useState([]);
   const [selectedTags, setSelectedTags] = useState([]);
   const [searchQuery, setSearchQuery] = useState('');
   const [isDragging, setIsDragging] = useState(false);
   const [uploadProgress, setUploadProgress] = useState({});
   const [hoveredAsset, setHoveredAsset] = useState(null);
   const [draggedAsset, setDraggedAsset] = useState(null);
+  const [libraryMessage, setLibraryMessage] = useState('');
+  const [previewingAssetId, setPreviewingAssetId] = useState(null);
+  const [isLoadingAssets, setIsLoadingAssets] = useState(true);
   
   const fileInputRef = useRef(null);
+  const previewAudioRef = useRef(new Audio());
 
-  // Filter assets based on search and tags
+  const loadAudioAssets = useCallback(async () => {
+    try {
+      setIsLoadingAssets(true);
+      const token = localStorage.getItem('token');
+      const response = await apiService.getAudioFiles();
+      const rows = response?.data || [];
+      const mapped = rows.map((row) => mapAudioFileToAsset(row, token));
+      setAssets(mapped);
+    } catch (error) {
+      setLibraryMessage(`Failed to load library: ${error.message}`);
+      setAssets([]);
+    } finally {
+      setIsLoadingAssets(false);
+    }
+  }, []);
+
   useEffect(() => {
+    loadAudioAssets();
+  }, [loadAudioAssets]);
+
+  const availableTags = useMemo(() => {
+    const tags = new Set();
+    assets.forEach((asset) => {
+      (asset.tags || []).forEach((tag) => tags.add(tag));
+    });
+    return Array.from(tags);
+  }, [assets]);
+
+  const filteredAssets = useMemo(() => {
     let filtered = assets;
 
     if (searchQuery) {
-      filtered = filtered.filter(asset =>
-        asset.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
-        asset.tags.some(tag => tag.toLowerCase().includes(searchQuery.toLowerCase()))
+      const normalizedQuery = searchQuery.toLowerCase();
+      filtered = filtered.filter((asset) =>
+        asset.name.toLowerCase().includes(normalizedQuery) ||
+        (asset.tags || []).some((tag) => tag.toLowerCase().includes(normalizedQuery))
       );
     }
 
     if (selectedTags.length > 0) {
-      filtered = filtered.filter(asset =>
-        selectedTags.some(tag => asset.tags.includes(tag))
+      filtered = filtered.filter((asset) =>
+        selectedTags.some((tag) => (asset.tags || []).includes(tag))
       );
     }
 
-    setFilteredAssets(filtered);
+    return filtered;
   }, [assets, searchQuery, selectedTags]);
 
-  const handleFileSelect = (files) => {
-    Array.from(files).forEach(file => {
-      const newAsset = {
-        id: Date.now() + Math.random(),
-        name: file.name.replace(/\.[^/.]+$/, ''),
-        type: 'audio',
-        format: file.name.split('.').pop().toLowerCase(),
-        duration: '0.0s',
-        size: `${(file.size / (1024 * 1024)).toFixed(1)} MB`,
-        tags: [],
-        bpm: 0,
-        key: 'C',
-        uploaded: new Date()
-      };
+  useEffect(() => {
+    if (!libraryMessage) return undefined;
+    const timer = setTimeout(() => setLibraryMessage(''), 2600);
+    return () => clearTimeout(timer);
+  }, [libraryMessage]);
 
-      setAssets(prev => [...prev, newAsset]);
-      
-      // Simulate upload progress
-      const assetId = newAsset.id;
-      setUploadProgress(prev => ({ ...prev, [assetId]: 0 }));
-      
-      const progressInterval = setInterval(() => {
-        setUploadProgress(prev => {
-          const current = prev[assetId] || 0;
-          if (current >= 100) {
-            clearInterval(progressInterval);
-            const newProgress = { ...prev };
-            delete newProgress[assetId];
-            return newProgress;
-          }
-          return { ...prev, [assetId]: current + 10 };
-        });
-      }, 200);
-    });
+  useEffect(() => {
+    const previewAudio = previewAudioRef.current;
+    const handleEnded = () => setPreviewingAssetId(null);
+    previewAudio.addEventListener('ended', handleEnded);
+
+    return () => {
+      previewAudio.removeEventListener('ended', handleEnded);
+      previewAudio.pause();
+      previewAudio.src = '';
+    };
+  }, []);
+
+  const handleFileSelect = async (files) => {
+    const selectedFiles = Array.from(files || []);
+    if (selectedFiles.length === 0) return;
+
+    for (const file of selectedFiles) {
+      setUploadProgress((prev) => ({ ...prev, [file.name]: 10 }));
+      try {
+        await apiService.uploadAudioFile(file);
+        setUploadProgress((prev) => ({ ...prev, [file.name]: 100 }));
+      } catch (error) {
+        setLibraryMessage(`Upload failed for ${file.name}: ${error.message}`);
+      } finally {
+        setTimeout(() => {
+          setUploadProgress((prev) => {
+            const nextProgress = { ...prev };
+            delete nextProgress[file.name];
+            return nextProgress;
+          });
+        }, 350);
+      }
+    }
+
+    await loadAudioAssets();
+    setLibraryMessage('Audio upload complete.');
   };
 
-  const handleDrop = (e) => {
+  const handleDrop = async (e) => {
     e.preventDefault();
     setIsDragging(false);
-    handleFileSelect(e.dataTransfer.files);
+    await handleFileSelect(e.dataTransfer.files);
   };
 
   const handleDragOver = (e) => {
@@ -538,14 +559,95 @@ const SoundLibraryPage = () => {
     );
   };
 
-  const handlePreview = (asset) => {
-    console.log('Preview asset:', asset);
-    // TODO: Implement audio preview
+  const handlePreview = async (asset) => {
+    const previewAudio = previewAudioRef.current;
+
+    if (previewingAssetId === asset.id && !previewAudio.paused) {
+      previewAudio.pause();
+      previewAudio.currentTime = 0;
+      setPreviewingAssetId(null);
+      setLibraryMessage(`Stopped preview: ${asset.name}`);
+      return;
+    }
+
+    if (!asset.previewUrl) {
+      setLibraryMessage(`Preview unavailable for "${asset.name}". Upload files to preview audio.`);
+      return;
+    }
+
+    try {
+      previewAudio.pause();
+      previewAudio.src = asset.previewUrl;
+      previewAudio.currentTime = 0;
+      await previewAudio.play();
+      setPreviewingAssetId(asset.id);
+      setLibraryMessage(`Previewing "${asset.name}"`);
+    } catch (error) {
+      setPreviewingAssetId(null);
+      setLibraryMessage(`Preview failed: ${error.message}`);
+    }
   };
 
-  const handleAddToTimeline = (asset) => {
-    console.log('Add to timeline:', asset);
-    // TODO: Add asset to timeline
+  const handleAddToTimeline = async (asset) => {
+    if (!projectId) {
+      setLibraryMessage('No project selected.');
+      return;
+    }
+
+    try {
+      setLibraryMessage(`Adding "${asset.name}" to timeline...`);
+      const projectResponse = await apiService.getProject(projectId);
+      const project = projectResponse?.data || projectResponse;
+
+      let targetTrack = project?.tracks?.find((track) => track.type === 'audio') || project?.tracks?.[0];
+
+      if (!targetTrack) {
+        const createdTrackResponse = await apiService.addTrack(projectId, {
+          name: 'Imported Audio',
+          type: 'audio',
+          volume: 0.7,
+          pan: 0,
+          isMuted: false,
+          isSolo: false,
+          color: '#4CAF50'
+        });
+        targetTrack = createdTrackResponse?.data || createdTrackResponse;
+      }
+
+      const clips = project?.clips || [];
+      const trackClips = clips.filter((clip) => (clip.track_id || clip.trackId) === targetTrack.id);
+      const nextStartTime = trackClips.reduce((maxTime, clip) => {
+        const startTime = Number(clip.start_time ?? clip.startTime ?? 0);
+        const duration = Number(clip.duration ?? 0);
+        return Math.max(maxTime, startTime + duration);
+      }, 0);
+
+      await apiService.addClip(projectId, {
+        trackId: targetTrack.id,
+        name: asset.name,
+        type: 'audio',
+        startTime: nextStartTime,
+        duration: parseAssetDuration(asset.duration),
+        fileName: asset.fileName || null,
+        filePath: asset.filePath || null,
+        fileSize: asset.fileSize || null,
+        sampleRate: asset.sampleRate || null,
+        bitDepth: asset.bitDepth || null,
+        channels: asset.channels || null,
+        settings: {
+          source: 'sound-library',
+          fileName: asset.fileName || null,
+          format: asset.format || 'wav',
+          key: asset.key || 'C',
+          bpm: Number(asset.bpm || 0)
+        }
+      });
+
+      setLibraryMessage(`Added "${asset.name}" to timeline.`);
+      setTimeout(() => navigate(`/project/${projectId}/`), 450);
+    } catch (error) {
+      setLibraryMessage(`Add failed: ${error.message}`);
+    }
   };
 
 
@@ -605,14 +707,14 @@ const SoundLibraryPage = () => {
               <button
                 type="button"
                 style={toggleBtnStyle}
-                onClick={() => navigate(`/daw/${projectId}`)}
+                onClick={() => navigate(`/project/${projectId}`)}
               >
                 Arrangement View
               </button>
               <button
                 type="button"
                 style={toggleBtnStyle}
-                onClick={() => navigate(`/daw/${projectId}/mixer`)}
+                onClick={() => navigate(`/project/${projectId}/mixer`)}
               >
                 Mixer View
               </button>
@@ -624,6 +726,10 @@ const SoundLibraryPage = () => {
               </button>
             </div>
           </div>
+
+          {libraryMessage && (
+            <div style={statusMessageStyle}>{libraryMessage}</div>
+          )}
 
           <div style={contentStyle}>
             <div style={sidebarStyle}>
@@ -643,7 +749,10 @@ const SoundLibraryPage = () => {
                   multiple
                   accept="audio/*"
                   style={fileInputStyle}
-                  onChange={(e) => handleFileSelect(e.target.files)}
+                  onChange={async (e) => {
+                    await handleFileSelect(e.target.files);
+                    e.target.value = '';
+                  }}
                 />
               </div>
 
@@ -660,6 +769,11 @@ const SoundLibraryPage = () => {
                       {tag}
                     </button>
                   ))}
+                  {availableTags.length === 0 && (
+                    <div style={{ fontSize: '11px', color: '#94a3b8' }}>
+                      Upload files to generate tags.
+                    </div>
+                  )}
                 </div>
               </div>
 
@@ -671,20 +785,17 @@ const SoundLibraryPage = () => {
                   value={searchQuery}
                   onChange={(e) => setSearchQuery(e.target.value)}
                   style={searchBoxStyle}
-                  onFocus={(e) => {
-                    e.target.style.borderColor = 'rgba(96, 165, 250, 0.5)';
-                    e.target.style.background = 'rgba(8, 12, 18, 0.8)';
-                  }}
-                  onBlur={(e) => {
-                    e.target.style.borderColor = 'rgba(148, 163, 184, 0.3)';
-                    e.target.style.background = 'rgba(8, 12, 18, 0.6)';
-                  }}
                 />
               </div>
             </div>
 
             <div style={mainContentStyle}>
-              {filteredAssets.length === 0 ? (
+              {isLoadingAssets ? (
+                <div style={emptyStateStyle}>
+                  <div style={emptyStateIconStyle}>🎧</div>
+                  <div style={emptyStateTextStyle}>Loading audio library...</div>
+                </div>
+              ) : filteredAssets.length === 0 ? (
                 <div style={emptyStateStyle}>
                   <div style={emptyStateIconStyle}>🎵</div>
                   <div style={emptyStateTextStyle}>
@@ -737,45 +848,25 @@ const SoundLibraryPage = () => {
                         <button
                           type="button"
                           style={actionBtnStyle}
-                          onMouseEnter={(e) => {
-                            e.target.style.borderColor = 'rgba(96, 165, 250, 0.5)';
-                            e.target.style.background = 'rgba(30, 64, 175, 0.3)';
-                            e.target.style.color = '#eff6ff';
-                          }}
-                          onMouseLeave={(e) => {
-                            e.target.style.borderColor = 'rgba(148, 163, 184, 0.3)';
-                            e.target.style.background = 'rgba(15, 23, 42, 0.4)';
-                            e.target.style.color = '#bfdbfe';
-                          }}
                           onClick={() => handlePreview(asset)}
                         >
-                          🔊 Preview
+                          {previewingAssetId === asset.id ? '⏹ Stop' : '🔊 Preview'}
                         </button>
                         <button
                           type="button"
                           style={actionBtnStyle}
-                          onMouseEnter={(e) => {
-                            e.target.style.borderColor = 'rgba(96, 165, 250, 0.5)';
-                            e.target.style.background = 'rgba(30, 64, 175, 0.3)';
-                            e.target.style.color = '#eff6ff';
-                          }}
-                          onMouseLeave={(e) => {
-                            e.target.style.borderColor = 'rgba(148, 163, 184, 0.3)';
-                            e.target.style.background = 'rgba(15, 23, 42, 0.4)';
-                            e.target.style.color = '#bfdbfe';
-                          }}
                           onClick={() => handleAddToTimeline(asset)}
                         >
                           ➕ Add to Timeline
                         </button>
                       </div>
 
-                      {uploadProgress[asset.id] !== undefined && (
+                      {uploadProgress[asset.fileName || asset.name] !== undefined && (
                         <div style={progressBarStyle}>
                           <div
                             style={{
                               ...progressFillStyle,
-                              width: `${uploadProgress[asset.id]}%`
+                              width: `${uploadProgress[asset.fileName || asset.name]}%`
                             }}
                           />
                         </div>
