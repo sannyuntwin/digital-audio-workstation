@@ -18,8 +18,9 @@ const RegisterPage = () => {
     last_name: '',
   });
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const [formError, setFormError] = useState('');
 
-  const { register, error, isLoading, clearError } = useAuth();
+  const { register, error, clearError } = useAuth();
   const navigate = useNavigate();
 
   const handleChange = (e) => {
@@ -28,6 +29,10 @@ const RegisterPage = () => {
       ...prev,
       [name]: value
     }));
+
+    if (formError) {
+      setFormError('');
+    }
     
     // Clear error when user starts typing
     if (error) {
@@ -60,6 +65,7 @@ const RegisterPage = () => {
     
     const validationError = validateForm();
     if (validationError) {
+      setFormError(validationError);
       return;
     }
 
@@ -98,10 +104,10 @@ const RegisterPage = () => {
           </div>
 
           <form className="register-form" onSubmit={handleSubmit}>
-            {error && (
+            {(formError || error) && (
               <div className="error-message">
                 <div className="error-icon">!</div>
-                <span>{error}</span>
+                <span>{formError || error}</span>
               </div>
             )}
 
@@ -118,7 +124,7 @@ const RegisterPage = () => {
                   value={formData.username}
                   onChange={handleChange}
                   required
-                  disabled={isLoading}
+                  disabled={isSubmitting}
                   placeholder="Choose a username"
                   autoFocus
                   className="form-input"
@@ -137,7 +143,7 @@ const RegisterPage = () => {
                   value={formData.email}
                   onChange={handleChange}
                   required
-                  disabled={isLoading}
+                  disabled={isSubmitting}
                   placeholder="Enter your email"
                   className="form-input"
                 />
@@ -157,7 +163,7 @@ const RegisterPage = () => {
                   value={formData.password}
                   onChange={handleChange}
                   required
-                  disabled={isLoading}
+                  disabled={isSubmitting}
                   placeholder="Create a password"
                   className="form-input"
                 />
@@ -175,7 +181,7 @@ const RegisterPage = () => {
                   value={formData.confirmPassword}
                   onChange={handleChange}
                   required
-                  disabled={isLoading}
+                  disabled={isSubmitting}
                   placeholder="Confirm your password"
                   className="form-input"
                 />
@@ -194,7 +200,7 @@ const RegisterPage = () => {
                   name="first_name"
                   value={formData.first_name}
                   onChange={handleChange}
-                  disabled={isLoading}
+                  disabled={isSubmitting}
                   placeholder="Your first name"
                   className="form-input"
                 />
@@ -211,7 +217,7 @@ const RegisterPage = () => {
                   name="last_name"
                   value={formData.last_name}
                   onChange={handleChange}
-                  disabled={isLoading}
+                  disabled={isSubmitting}
                   placeholder="Your last name"
                   className="form-input"
                 />
@@ -221,7 +227,7 @@ const RegisterPage = () => {
             <button
               type="submit"
               className="register-button"
-              disabled={isLoading || isSubmitting || !formData.username || !formData.email || !formData.password || !formData.confirmPassword || formData.password !== formData.confirmPassword}
+              disabled={isSubmitting}
             >
               {isSubmitting ? (
                 <span className="button-content">

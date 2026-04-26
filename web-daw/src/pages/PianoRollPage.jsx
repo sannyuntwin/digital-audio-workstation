@@ -500,7 +500,7 @@ const PianoRollPage = () => {
       <div style={shellStyle}>
         <div style={topBarStyle}>
           <div style={leftTopStyle}>
-            <button type="button" style={backBtnStyle} onClick={() => navigate(`/daw/${projectId}`)}>
+            <button type="button" style={backBtnStyle} onClick={() => navigate(`/project/${projectId}`)}>
               Back To DAW
             </button>
             <span style={titleStyle}>Piano Roll</span>

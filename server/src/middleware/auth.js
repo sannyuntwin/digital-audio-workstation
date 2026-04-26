@@ -13,7 +13,9 @@ const JWT_SECRET = process.env.JWT_SECRET || 'web-daw-super-secret-key';
  */
 const authenticate = (req, res, next) => {
   // Get token from header
-  const token = req.header('x-auth-token') || req.header('Authorization')?.replace('Bearer ', '');
+  const token = req.header('x-auth-token')
+    || req.header('Authorization')?.replace('Bearer ', '')
+    || req.query?.token;
   
   if (!token) {
     return res.status(401).json({ message: 'No token, authorization denied' });
@@ -54,7 +56,9 @@ const authenticateSocket = (socket, next) => {
  * Optional authentication - doesn't fail if no token
  */
 const optionalAuth = (req, res, next) => {
-  const token = req.header('x-auth-token') || req.header('Authorization')?.replace('Bearer ', '');
+  const token = req.header('x-auth-token')
+    || req.header('Authorization')?.replace('Bearer ', '')
+    || req.query?.token;
   
   if (!token) {
     return next();

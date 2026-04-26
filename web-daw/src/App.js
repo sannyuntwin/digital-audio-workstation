@@ -4,7 +4,7 @@
  */
 
 import React, { useEffect } from 'react';
-import { BrowserRouter as Router, Routes, Route, Navigate } from 'react-router-dom';
+import { BrowserRouter as Router, Routes, Route, Navigate, useParams } from 'react-router-dom';
 import './index.css';
 
 // Import storage cleanup
@@ -23,6 +23,11 @@ import RegisterPage from './pages/RegisterPage';
 // Import protected route component
 import ProtectedRoute from './components/ProtectedRoute';
 
+function LegacyProjectRedirect() {
+  const { projectId } = useParams();
+  return <Navigate to={`/project/${projectId}/`} replace />;
+}
+
 // App content with routes
 function AppContent() {
   return (
@@ -31,6 +36,11 @@ function AppContent() {
       <Route path="/" element={<LandingPage />} />
       <Route path="/login" element={<LoginPage />} />
       <Route path="/register" element={<RegisterPage />} />
+      <Route path="/daw-interface" element={<Navigate to="/dashboard" replace />} />
+      <Route path="/about" element={<Navigate to="/" replace />} />
+      <Route path="/features" element={<Navigate to="/" replace />} />
+      <Route path="/docs" element={<Navigate to="/" replace />} />
+      <Route path="/support" element={<Navigate to="/" replace />} />
       
       {/* Protected Routes */}
       <Route path="/dashboard" element={
@@ -39,9 +49,15 @@ function AppContent() {
         </ProtectedRoute>
       } />
       
-      <Route path="/project/:projectId/" element={
+      <Route path="/project/:projectId/*" element={
         <ProtectedRoute>
           <DAWEditorPage />
+        </ProtectedRoute>
+      } />
+
+      <Route path="/daw/:projectId/*" element={
+        <ProtectedRoute>
+          <LegacyProjectRedirect />
         </ProtectedRoute>
       } />
       

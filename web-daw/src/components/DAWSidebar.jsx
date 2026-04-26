@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { useState, useRef, useEffect } from 'react';
 
 const sidebarStyle = {
   width: '240px',
@@ -7,7 +7,31 @@ const sidebarStyle = {
   borderRight: '1px solid #333338',
   display: 'flex',
   flexDirection: 'column',
-  overflow: 'hidden'
+  overflow: 'hidden',
+  position: 'relative',
+  transition: 'width 0.3s ease, min-width 0.3s ease'
+};
+
+const sidebarCollapsedStyle = {
+  ...sidebarStyle,
+  width: '48px',
+  minWidth: '48px'
+};
+
+const resizeHandleStyle = {
+  position: 'absolute',
+  right: '-3px',
+  top: 0,
+  bottom: 0,
+  width: '6px',
+  cursor: 'col-resize',
+  background: 'transparent',
+  zIndex: 1000
+};
+
+const resizeHandleHoverStyle = {
+  ...resizeHandleStyle,
+  background: 'rgba(61, 139, 65, 0.3)'
 };
 
 const sidebarHeaderStyle = {
@@ -25,7 +49,29 @@ const headerTitleStyle = {
   fontWeight: 600,
   color: '#9da2ac',
   textTransform: 'uppercase',
-  letterSpacing: '0.5px'
+  letterSpacing: '0.5px',
+  transition: 'opacity 0.3s ease'
+};
+
+const toggleBtnStyle = {
+  width: '24px',
+  height: '24px',
+  display: 'flex',
+  alignItems: 'center',
+  justifyContent: 'center',
+  background: 'transparent',
+  border: 'none',
+  borderRadius: '4px',
+  color: '#6b6b75',
+  fontSize: '12px',
+  cursor: 'pointer',
+  transition: 'all 0.15s ease'
+};
+
+const toggleBtnHoverStyle = {
+  ...toggleBtnStyle,
+  background: '#2a2a2e',
+  color: '#9da2ac'
 };
 
 const addTrackBtnSmallStyle = {
@@ -71,6 +117,12 @@ const trackItemSelectedStyle = {
   background: '#2d3a2d',
   borderLeft: '3px solid #3d8b41',
   paddingLeft: '11px'
+};
+
+const trackDragOverStyle = {
+  background: 'rgba(61, 139, 65, 0.2)',
+  border: '2px dashed #3d8b41',
+  transform: 'scale(1.02)'
 };
 
 const trackIconStyle = {
@@ -208,16 +260,40 @@ const DAWSidebar = ({
   editingTrackId,
   editName,
   onEditNameChange,
-  onEditNameSubmit
+  onEditNameSubmit,
+  collapsed = false,
+  onToggleCollapse,
+  onWidthChange,
+  onAudioFileDrop
 }) => {
+  const [isResizing, setIsResizing] = useState(false);
+  const [isHoveringResize, setIsHoveringResize] = useState(false);
+  const [isHoveringToggle, setIsHoveringToggle] = useState(false);
+  const [width, setWidth] = useState(240);
+  const [draggedOverTrackId, setDraggedOverTrackId] = useState(null);
+  const sidebarRef = useRef(null);
+  const resizeStartX = useRef(0);
+  const resizeStartWidth = useRef(240);
   const handleTrackClick = (trackId) => {
     onTrackSelect?.(trackId);
   };
 
-  const getItemStyle = (track) => ({
-    ...trackItemStyle,
-    ...(track.selected ? trackItemSelectedStyle : {})
-  });
+  const getItemStyle = (track) => {
+    const baseStyle = {
+      ...trackItemStyle,
+      ...(track.selected ? trackItemSelectedStyle : {}),
+      transition: 'all 0.2s ease'
+    };
+
+    if (draggedOverTrackId === track.id) {
+      return {
+        ...baseStyle,
+        ...trackDragOverStyle
+      };
+    }
+
+    return baseStyle;
+  };
 
   const handleNameDoubleClick = (e, track) => {
     e.stopPropagation();
@@ -232,136 +308,272 @@ const DAWSidebar = ({
     }
   };
 
+  const handleToggleCollapse = () => {
+    onToggleCollapse?.();
+  };
+
+  const handleResizeStart = (e) => {
+    e.preventDefault();
+    setIsResizing(true);
+    resizeStartX.current = e.clientX;
+    resizeStartWidth.current = width;
+    document.body.style.cursor = 'col-resize';
+    document.body.style.userSelect = 'none';
+  };
+
+  const handleResizeMove = (e) => {
+    if (!isResizing) return;
+    const deltaX = e.clientX - resizeStartX.current;
+    const newWidth = Math.max(200, Math.min(400, resizeStartWidth.current + deltaX));
+    setWidth(newWidth);
+  };
+
+  const handleResizeEnd = () => {
+    if (!isResizing) return;
+    setIsResizing(false);
+    document.body.style.cursor = '';
+    document.body.style.userSelect = '';
+    onWidthChange?.(width);
+  };
+
+  useEffect(() => {
+    if (isResizing) {
+      const handleMouseMove = (e) => handleResizeMove(e);
+      const handleMouseUp = () => handleResizeEnd();
+      
+      document.addEventListener('mousemove', handleMouseMove);
+      document.addEventListener('mouseup', handleMouseUp);
+      
+      return () => {
+        document.removeEventListener('mousemove', handleMouseMove);
+        document.removeEventListener('mouseup', handleMouseUp);
+      };
+    }
+  }, [isResizing, width]);
+
+  const handleContextMenu = (e, track) => {
+    e.preventDefault();
+    // Context menu functionality can be added here
+    console.log('Context menu for track:', track.name);
+  };
+
+  const handleSidebarDoubleClick = () => {
+    if (collapsed) {
+      onAddTrack?.();
+    }
+  };
+
+  const handleDragOver = (e, trackId) => {
+    e.preventDefault();
+    e.stopPropagation();
+    setDraggedOverTrackId(trackId);
+  };
+
+  const handleDragLeave = (e) => {
+    e.preventDefault();
+    e.stopPropagation();
+    setDraggedOverTrackId(null);
+  };
+
+  const handleDrop = (e, track) => {
+    e.preventDefault();
+    e.stopPropagation();
+    setDraggedOverTrackId(null);
+
+    const files = Array.from(e.dataTransfer.files);
+    const audioFiles = files.filter(file => {
+      const fileName = String(file.name || '').toLowerCase();
+      return /\.(wav|mp3|ogg|flac|aac|m4a|webm)$/i.test(fileName);
+    });
+
+    if (audioFiles.length > 0) {
+      onAudioFileDrop?.(track.id, audioFiles);
+    }
+  };
+
+  const handleDragStart = (e) => {
+    // Prevent default drag behavior on track elements
+    e.dataTransfer.effectAllowed = 'copy';
+  };
+
   return (
-    <div style={sidebarStyle}>
+    <div 
+      ref={sidebarRef}
+      style={collapsed ? sidebarCollapsedStyle : { ...sidebarStyle, width: `${width}px`, minWidth: `${width}px` }}
+      onDoubleClick={handleSidebarDoubleClick}
+      title={collapsed ? "Double-click to add track" : ""}
+    >
       <div style={sidebarHeaderStyle}>
-        <span style={headerTitleStyle}>Tracks</span>
-        <button style={addTrackBtnSmallStyle} onClick={onAddTrack} title="Add Track">+</button>
+        {!collapsed && <span style={headerTitleStyle}>Tracks</span>}
+        <div style={{ display: 'flex', gap: '4px' }}>
+          {!collapsed && (
+            <button 
+              style={addTrackBtnSmallStyle}
+              onClick={onAddTrack}
+              title="Add Track"
+            >
+              +
+            </button>
+          )}
+          <button 
+            style={isHoveringToggle ? toggleBtnHoverStyle : toggleBtnStyle}
+            onClick={handleToggleCollapse}
+            onMouseEnter={() => setIsHoveringToggle(true)}
+            onMouseLeave={() => setIsHoveringToggle(false)}
+            title={collapsed ? "Expand Sidebar" : "Collapse Sidebar"}
+          >
+            {collapsed ? '▶' : '◀'}
+          </button>
+        </div>
       </div>
       <div style={trackListStyle}>
         {tracks.map((track) => (
           <div
             key={track.id}
-            style={getItemStyle(track)}
-            onClick={() => handleTrackClick(track.id)}
+            style={collapsed ? { ...getItemStyle(track), justifyContent: 'center', padding: '0 10px' } : getItemStyle(track)}
+            onClick={() => !collapsed && handleTrackClick(track.id)}
             onMouseEnter={(e) => {
-              if (!track.selected) {
+              if (!collapsed && !track.selected) {
                 Object.assign(e.currentTarget.style, trackItemHoverStyle);
               }
             }}
             onMouseLeave={(e) => {
-              if (!track.selected) {
+              if (!collapsed && !track.selected) {
                 e.currentTarget.style.background = 'transparent';
               }
             }}
+            onContextMenu={(e) => !collapsed && handleContextMenu(e, track)}
+            onDragOver={(e) => !collapsed && handleDragOver(e, track.id)}
+            onDragLeave={(e) => !collapsed && handleDragLeave(e)}
+            onDrop={(e) => !collapsed && handleDrop(e, track)}
+            onDragStart={handleDragStart}
+            draggable={!collapsed}
+            title={collapsed ? `${track.name} - Drag audio files here` : track.name}
           >
-            <div style={track.type === 'audio' ? audioIconStyle : midiIconStyle}>
-              {track.icon}
-            </div>
-            <div style={trackInfoStyle}>
-              {editingTrackId === track.id ? (
-                <input
-                  type="text"
-                  value={editName}
-                  onChange={(e) => onEditNameChange?.(e.target.value)}
-                  onKeyDown={handleKeyDown}
-                  onBlur={() => onEditNameSubmit?.()}
-                  autoFocus
-                  style={{
-                    ...trackNameStyle,
-                    background: '#252529',
-                    border: '1px solid #3d8b41',
-                    borderRadius: '3px',
-                    padding: '2px 6px',
-                    outline: 'none',
-                    width: '100%'
-                  }}
-                />
-              ) : (
-                <div
-                  style={trackNameStyle}
-                  onDoubleClick={(e) => handleNameDoubleClick(e, track)}
-                  title="Double-click to rename"
-                >
-                  {track.name}
+            {!collapsed ? (
+              <>
+                <div style={track.type === 'audio' ? audioIconStyle : midiIconStyle}>
+                  {track.icon}
                 </div>
-              )}
-              <div style={{ display: 'flex', gap: '8px', marginTop: '4px' }}>
-                <div>
-                  <input
-                    type="range"
-                    min="0"
-                    max="100"
-                    value={track.volume ?? 80}
-                    onChange={(e) => onVolumeChange?.(track.id, parseInt(e.target.value))}
-                    onClick={(e) => e.stopPropagation()}
-                    style={volumeSliderStyle}
-                    title={`Volume: ${track.volume ?? 80}%`}
-                  />
-                  <div style={sliderLabelStyle}>VOL</div>
+                <div style={trackInfoStyle}>
+                  {editingTrackId === track.id ? (
+                    <input
+                      type="text"
+                      value={editName}
+                      onChange={(e) => onEditNameChange?.(e.target.value)}
+                      onKeyDown={handleKeyDown}
+                      onBlur={() => onEditNameSubmit?.()}
+                      autoFocus
+                      style={{
+                        ...trackNameStyle,
+                        background: '#252529',
+                        border: '1px solid #3d8b41',
+                        borderRadius: '3px',
+                        padding: '2px 6px',
+                        outline: 'none',
+                        width: '100%'
+                      }}
+                    />
+                  ) : (
+                    <div
+                      style={trackNameStyle}
+                      onDoubleClick={(e) => handleNameDoubleClick(e, track)}
+                      title="Double-click to rename"
+                    >
+                      {track.name}
+                    </div>
+                  )}
+                  <div style={{ display: 'flex', gap: '8px', marginTop: '4px' }}>
+                    <div>
+                      <input
+                        type="range"
+                        min="0"
+                        max="100"
+                        value={track.volume ?? 80}
+                        onChange={(e) => onVolumeChange?.(track.id, parseInt(e.target.value))}
+                        onClick={(e) => e.stopPropagation()}
+                        style={volumeSliderStyle}
+                        title={`Volume: ${track.volume ?? 80}%`}
+                      />
+                      <div style={sliderLabelStyle}>VOL</div>
+                    </div>
+                    <div>
+                      <input
+                        type="range"
+                        min="-50"
+                        max="50"
+                        value={track.pan ?? 0}
+                        onChange={(e) => onPanChange?.(track.id, parseInt(e.target.value))}
+                        onClick={(e) => e.stopPropagation()}
+                        style={panSliderStyle}
+                        title={`Pan: ${track.pan ?? 0}`}
+                      />
+                      <div style={sliderLabelStyle}>PAN</div>
+                    </div>
+                  </div>
                 </div>
-                <div>
-                  <input
-                    type="range"
-                    min="-50"
-                    max="50"
-                    value={track.pan ?? 0}
-                    onChange={(e) => onPanChange?.(track.id, parseInt(e.target.value))}
-                    onClick={(e) => e.stopPropagation()}
-                    style={panSliderStyle}
-                    title={`Pan: ${track.pan ?? 0}`}
-                  />
-                  <div style={sliderLabelStyle}>PAN</div>
+                <div style={trackControlsStyle}>
+                  <button
+                    style={track.muted ? controlBtnMuteStyle : controlBtnStyle}
+                    onClick={(e) => { e.stopPropagation(); onTrackMute?.(track.id); }}
+                    title="Mute"
+                  >
+                    <MuteIcon />
+                  </button>
+                  <button
+                    style={track.solo ? controlBtnActiveStyle : controlBtnStyle}
+                    onClick={(e) => { e.stopPropagation(); onTrackSolo?.(track.id); }}
+                    title="Solo"
+                  >
+                    <SoloIcon />
+                  </button>
+                  <button
+                    style={track.armed ? controlBtnMuteStyle : controlBtnStyle}
+                    onClick={(e) => { e.stopPropagation(); onTrackArm?.(track.id); }}
+                    title="Arm for Recording"
+                  >
+                    <ArmIcon />
+                  </button>
+                  <button
+                    style={controlBtnStyle}
+                    onClick={(e) => { e.stopPropagation(); onDuplicateTrack?.(track.id); }}
+                    title="Duplicate Track"
+                  >
+                    ⧉
+                  </button>
+                  <button
+                    style={controlBtnStyle}
+                    onClick={(e) => { e.stopPropagation(); onChangeTrackType?.(track.id); }}
+                    title="Toggle Audio/MIDI"
+                  >
+                    ⇄
+                  </button>
+                  <button
+                    style={{ ...controlBtnStyle, color: '#e04d4d' }}
+                    onClick={(e) => { e.stopPropagation(); onDeleteTrack?.(track.id); }}
+                    title="Delete Track"
+                  >
+                    ✕
+                  </button>
                 </div>
+              </>
+            ) : (
+              <div style={track.type === 'audio' ? audioIconStyle : midiIconStyle}>
+                {track.icon}
               </div>
-            </div>
-            <div style={trackControlsStyle}>
-              <button
-                style={track.muted ? controlBtnMuteStyle : controlBtnStyle}
-                onClick={(e) => { e.stopPropagation(); onTrackMute?.(track.id); }}
-                title="Mute"
-              >
-                <MuteIcon />
-              </button>
-              <button
-                style={track.solo ? controlBtnActiveStyle : controlBtnStyle}
-                onClick={(e) => { e.stopPropagation(); onTrackSolo?.(track.id); }}
-                title="Solo"
-              >
-                <SoloIcon />
-              </button>
-              <button
-                style={track.armed ? controlBtnMuteStyle : controlBtnStyle}
-                onClick={(e) => { e.stopPropagation(); onTrackArm?.(track.id); }}
-                title="Arm for Recording"
-              >
-                <ArmIcon />
-              </button>
-              <button
-                style={controlBtnStyle}
-                onClick={(e) => { e.stopPropagation(); onDuplicateTrack?.(track.id); }}
-                title="Duplicate Track"
-              >
-                ⧉
-              </button>
-              <button
-                style={controlBtnStyle}
-                onClick={(e) => { e.stopPropagation(); onChangeTrackType?.(track.id); }}
-                title="Toggle Audio/MIDI"
-              >
-                ⇄
-              </button>
-              <button
-                style={{ ...controlBtnStyle, color: '#e04d4d' }}
-                onClick={(e) => { e.stopPropagation(); onDeleteTrack?.(track.id); }}
-                title="Delete Track"
-              >
-                ✕
-              </button>
-            </div>
+            )}
           </div>
         ))}
       </div>
+      {!collapsed && (
+        <div 
+          style={isHoveringResize ? resizeHandleHoverStyle : resizeHandleStyle}
+          onMouseDown={handleResizeStart}
+          onMouseEnter={() => setIsHoveringResize(true)}
+          onMouseLeave={() => setIsHoveringResize(false)}
+          title="Drag to resize"
+        />
+      )}
     </div>
   );
 };

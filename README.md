@@ -1,33 +1,18 @@
-# Web DAW - Login Credentials
+# Web DAW
 
-## Test Users
+This project no longer ships with seeded users, projects, tracks, or clips.
 
-The following test users are available for login:
+## First Run
 
-### Admin User
-- **Username**: `admin`
-- **Email**: `admin@webdaw.com`
-- **Password**: `password123`
-
-### Demo User
-- **Username**: `demo`
-- **Email**: `demo@webdaw.com`
-- **Password**: `password123`
-
-### Test User
-- **Username**: `test`
-- **Email**: `test@webdaw.com`
-- **Password**: `password123`
-
-## Usage
-
-1. Navigate to the Web DAW application
-2. Click on "Login" or go to the login page
-3. Use any of the credentials above
-4. All users have the same password: `password123`
+1. Start services:
+   - `docker compose up -d --build`
+2. Open the web app and create an account from the register page.
+3. Log in and create your first project.
 
 ## Notes
 
-- These are development/test users only
-- In production, users would register their own accounts
-- Password is hashed using bcrypt for security
+- Audio library content is user-driven:
+  - Upload files from Sound Library.
+  - Files are stored in the backend and listed via API.
+- If you previously used seeded data, remove your old Postgres volume to start clean:
+  - `docker compose down -v`

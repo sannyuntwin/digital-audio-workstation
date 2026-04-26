@@ -424,7 +424,7 @@ const ExportPage = () => {
       setExportProgress(0);
       setExportStatus('');
     } else {
-      navigate(`/daw/${projectId}`);
+      navigate(`/project/${projectId}`);
     }
   };
 
@@ -506,28 +506,28 @@ const ExportPage = () => {
               <button
                 type="button"
                 style={toggleBtnStyle}
-                onClick={() => navigate(`/daw/${projectId}`)}
+                onClick={() => navigate(`/project/${projectId}`)}
               >
                 Arrangement View
               </button>
               <button
                 type="button"
                 style={toggleBtnStyle}
-                onClick={() => navigate(`/daw/${projectId}/mixer`)}
+                onClick={() => navigate(`/project/${projectId}/mixer`)}
               >
                 Mixer View
               </button>
               <button
                 type="button"
                 style={toggleBtnStyle}
-                onClick={() => navigate(`/daw/${projectId}/sound-library`)}
+                onClick={() => navigate(`/project/${projectId}/sound-library`)}
               >
                 Sound Library
               </button>
               <button
                 type="button"
                 style={toggleBtnStyle}
-                onClick={() => navigate(`/daw/${projectId}/settings`)}
+                onClick={() => navigate(`/project/${projectId}/settings`)}
               >
                 Settings
               </button>

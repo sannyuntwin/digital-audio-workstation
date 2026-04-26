@@ -454,12 +454,7 @@ const MixerModal = ({ tracks, onClose }) => {
                   {['Reverb', 'Delay'].map(bus => (
                     <div key={bus} style={sendRowStyle}>
                       <div style={sendLabelStyle}>{bus}</div>
-                      <div 
-                        style={sendKnobStyle}
-                        onClick={() => {
-                          const currentValue = Math.floor(Math.random() * 100);
-                        }}
-                      >
+                      <div style={sendKnobStyle}>
                         <div 
                           style={{
                             ...sendIndicatorStyle,

@@ -503,7 +503,7 @@ const MixerViewPage = () => {
               <button
                 type="button"
                 style={toggleBtnStyle}
-                onClick={() => navigate(`/daw/${projectId}`)}
+                onClick={() => navigate(`/project/${projectId}`)}
               >
                 Arrangement View
               </button>

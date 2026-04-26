@@ -3,7 +3,7 @@
  * Provides functions for project and audio management
  */
 
-const API_BASE_URL = 'http://localhost:8000';
+const API_BASE_URL = process.env.REACT_APP_API_URL || 'http://localhost:8000';
 
 class ApiService {
   constructor() {
@@ -140,10 +140,14 @@ class ApiService {
   async uploadAudioFile(file) {
     const formData = new FormData();
     formData.append('audio', file);
+    const token = this.getToken();
 
     try {
       const response = await fetch(`${this.baseURL}/api/audio/upload`, {
         method: 'POST',
+        headers: {
+          ...(token && { 'Authorization': `Bearer ${token}` }),
+        },
         body: formData,
       });
 

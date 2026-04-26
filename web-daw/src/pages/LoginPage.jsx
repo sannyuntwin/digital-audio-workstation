@@ -147,10 +147,9 @@ const LoginPage = () => {
               </Link>
             </p>
             <div className="demo-info">
-              <p>Demo users available:</p>
+              <p>No default users are preloaded.</p>
               <div className="demo-users">
-                <span>admin / password123</span>
-                <span>demo / password123</span>
+                <span>Create an account from Register first.</span>
               </div>
             </div>
           </div>

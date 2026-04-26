@@ -235,7 +235,7 @@ const LandingPage = () => {
             <Link to="/dashboard" className="cta-primary">
               View Dashboard
             </Link>
-            <Link to="/daw-interface" className="cta-secondary">
+            <Link to="/dashboard" className="cta-secondary">
               Try Demo
             </Link>
           </div>
@@ -251,10 +251,10 @@ const LandingPage = () => {
               <p>Professional Digital Audio Workstation</p>
             </div>
             <div className="footer-links">
-              <Link to="/about">About</Link>
-              <Link to="/features">Features</Link>
-              <Link to="/docs">Documentation</Link>
-              <Link to="/support">Support</Link>
+              <Link to="/dashboard">Dashboard</Link>
+              <Link to="/login">Login</Link>
+              <Link to="/register">Register</Link>
+              <Link to="/">Home</Link>
             </div>
           </div>
           <div className="footer-bottom">

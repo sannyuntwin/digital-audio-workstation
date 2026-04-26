@@ -36,7 +36,7 @@ const ProjectsPage = ({ onEnterDAW }) => {
   const handleEnterProject = useCallback((project) => {
     console.log('Entering project:', project.name);
     // Navigate to DAW with project ID
-    navigate(`/daw/${project.id}`);
+    navigate(`/project/${project.id}`);
   }, [navigate]);
 
   // Load projects on component mount
@@ -75,7 +75,7 @@ const ProjectsPage = ({ onEnterDAW }) => {
       setNewProjectName('');
       
       // Navigate to DAW with the new project
-      navigate(`/daw/${newProject.data.id}`);
+      navigate(`/project/${newProject.data.id}`);
       
     } catch (err) {
       console.error('Failed to create project:', err);

@@ -152,26 +152,6 @@ const inputStyle = {
   outline: 'none'
 };
 
-const radioGroupStyle = {
-  display: 'flex',
-  gap: '12px'
-};
-
-const radioLabelStyle = {
-  display: 'flex',
-  alignItems: 'center',
-  gap: '6px',
-  fontSize: '12px',
-  color: '#eff6ff',
-  cursor: 'pointer'
-};
-
-const radioInputStyle = {
-  width: '16px',
-  height: '16px',
-  accentColor: '#3b82f6'
-};
-
 const sliderContainerStyle = {
   display: 'flex',
   alignItems: 'center',
@@ -305,7 +285,7 @@ const SettingsModal = ({ onClose }) => {
   const [sampleRate, setSampleRate] = useState(44100);
   const [bufferSize, setBufferSize] = useState(512);
   const [theme, setTheme] = useState('dark');
-  const [shortcuts, setShortcuts] = useState([
+  const [shortcuts] = useState([
     { action: 'Play/Pause', key: 'Space', category: 'Transport' },
     { action: 'Stop', key: 'Shift + Space', category: 'Transport' },
     { action: 'Record', key: 'R', category: 'Transport' },

@@ -109,7 +109,7 @@ server/
 ### Create a New Project
 
 ```javascript
-const response = await fetch('http://localhost:3001/api/projects', {
+const response = await fetch('http://localhost:8000/api/projects', {
   method: 'POST',
   headers: {
     'Content-Type': 'application/json'
@@ -130,7 +130,7 @@ const project = await response.json();
 const formData = new FormData();
 formData.append('audio', audioFile);
 
-const response = await fetch('http://localhost:3001/api/audio/upload', {
+const response = await fetch('http://localhost:8000/api/audio/upload', {
   method: 'POST',
   body: formData
 });
@@ -141,7 +141,7 @@ const fileInfo = await response.json();
 ### WebSocket Connection
 
 ```javascript
-const socket = io('http://localhost:3001');
+const socket = io('http://localhost:8000');
 
 // Join project room
 socket.emit('join-project', projectId);
@@ -158,7 +158,7 @@ Environment variables in `.env`:
 
 ```env
 # Server Configuration
-PORT=3001
+PORT=8000
 NODE_ENV=development
 
 # CORS Configuration
@@ -195,7 +195,7 @@ SESSION_SECRET=your-super-secret-session-key
        server_name your-domain.com;
        
        location /api/ {
-           proxy_pass http://localhost:3001;
+           proxy_pass http://localhost:8000;
            proxy_http_version 1.1;
            proxy_set_header Upgrade $http_upgrade;
            proxy_set_header Connection 'upgrade';

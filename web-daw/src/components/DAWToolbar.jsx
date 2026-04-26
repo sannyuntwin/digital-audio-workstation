@@ -2,34 +2,40 @@ import React, { useState, useRef, useCallback } from 'react';
 
 // ============ STYLES ============
 const toolbarStyle = {
+  minHeight: '56px',
   height: '56px',
   display: 'flex',
   alignItems: 'center',
-  justifyContent: 'space-between',
-  padding: '0 16px',
+  justifyContent: 'flex-start',
+  padding: '0 12px',
   background: '#252529',
   borderBottom: '1px solid #333338',
-  gap: '16px'
+  gap: '16px',
+  overflowX: 'auto',
+  overflowY: 'hidden',
+  scrollbarWidth: 'thin'
 };
 
 const toolbarLeftStyle = {
   display: 'flex',
   alignItems: 'center',
-  gap: '12px'
+  gap: '12px',
+  flexShrink: 0
 };
 
 const toolbarCenterStyle = {
   display: 'flex',
   alignItems: 'center',
   gap: '16px',
-  flex: 1,
-  justifyContent: 'center'
+  justifyContent: 'center',
+  flexShrink: 0
 };
 
 const toolbarRightStyle = {
   display: 'flex',
   alignItems: 'center',
-  gap: '12px'
+  gap: '12px',
+  flexShrink: 0
 };
 
 const projectNameStyle = {

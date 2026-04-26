@@ -54,10 +54,13 @@ const authReducer = (state, action) => {
       };
 
     case AUTH_ACTIONS.LOAD_USER_SUCCESS:
+      // LOAD_USER_SUCCESS is also used to finish bootstrap with no session.
+      // Mark authenticated only when a user exists.
       return {
         ...state,
         user: action.payload.user,
-        isAuthenticated: true,
+        token: action.payload.token || null,
+        isAuthenticated: !!action.payload.user,
         isLoading: false,
         error: null,
       };

@@ -4,6 +4,7 @@ import apiService from '../services/apiService';
 import DAWToolbar from '../components/DAWToolbar';
 import DAWSidebar from '../components/DAWSidebar';
 import DAWTimeline from '../components/DAWTimeline';
+import CollapsiblePanel from '../components/CollapsiblePanel';
 import audioEngine from '../audio/AudioEngine';
 
 // Import modal components (we'll create these inline for now)
@@ -16,9 +17,10 @@ import ExportModal from '../components/modals/ExportModal';
 // ============ STYLES ============
 const pageStyle = {
   minHeight: '100vh',
+  height: '100vh',
   display: 'flex',
   flexDirection: 'column',
-  padding: '12px',
+  padding: 0,
   background: 'radial-gradient(circle at 15% 0%, #2a3f5f 0%, #131722 48%, #0d1118 100%)',
   color: '#f5f7fa',
   fontFamily: '"Avenir Next", "SF Pro Display", "Segoe UI", sans-serif'
@@ -28,7 +30,7 @@ const workspaceFrameStyle = {
   flex: 1,
   display: 'flex',
   flexDirection: 'column',
-  borderRadius: '16px',
+  borderRadius: 0,
   border: '1px solid rgba(148, 163, 184, 0.26)',
   background: 'rgba(8, 12, 18, 0.82)',
   boxShadow: '0 28px 52px rgba(0, 0, 0, 0.46)',
@@ -98,88 +100,6 @@ const quickNavBtnStyle = {
   fontWeight: 600,
   cursor: 'pointer',
   transition: 'all 0.2s ease'
-};
-
-const checklistPanelStyle = {
-  borderBottom: '1px solid rgba(148, 163, 184, 0.18)',
-  background: 'linear-gradient(90deg, rgba(13, 18, 31, 0.96) 0%, rgba(16, 23, 39, 0.88) 100%)',
-  padding: '10px 14px'
-};
-
-const checklistHeaderStyle = {
-  display: 'flex',
-  alignItems: 'center',
-  justifyContent: 'space-between',
-  gap: '10px',
-  flexWrap: 'wrap',
-  marginBottom: '8px'
-};
-
-const checklistTitleStyle = {
-  fontSize: '12px',
-  fontWeight: 700,
-  letterSpacing: '0.45px',
-  textTransform: 'uppercase',
-  color: '#dbeafe'
-};
-
-const checklistCountStyle = {
-  borderRadius: '999px',
-  border: '1px solid rgba(96, 165, 250, 0.55)',
-  background: 'rgba(30, 64, 175, 0.38)',
-  color: '#eff6ff',
-  padding: '3px 8px',
-  fontSize: '11px',
-  fontWeight: 700
-};
-
-const checklistActionsStyle = {
-  display: 'flex',
-  alignItems: 'center',
-  gap: '7px',
-  flexWrap: 'wrap'
-};
-
-const checklistActionBtnStyle = {
-  border: '1px solid rgba(148, 163, 184, 0.35)',
-  borderRadius: '7px',
-  padding: '4px 8px',
-  background: 'rgba(15, 23, 42, 0.5)',
-  color: '#cbd5e1',
-  fontSize: '11px',
-  fontWeight: 600,
-  cursor: 'pointer'
-};
-
-const checklistItemsWrapStyle = {
-  display: 'grid',
-  gridTemplateColumns: 'repeat(auto-fit, minmax(230px, 1fr))',
-  gap: '8px'
-};
-
-const checklistItemStyle = {
-  display: 'flex',
-  alignItems: 'flex-start',
-  gap: '8px',
-  border: '1px solid rgba(148, 163, 184, 0.22)',
-  borderRadius: '8px',
-  padding: '8px 10px',
-  background: 'rgba(15, 23, 42, 0.42)',
-  color: '#e2e8f0'
-};
-
-const checklistItemTitleStyle = {
-  display: 'block',
-  fontSize: '12px',
-  fontWeight: 700,
-  color: '#eff6ff'
-};
-
-const checklistItemHintStyle = {
-  display: 'block',
-  fontSize: '11px',
-  marginTop: '3px',
-  color: '#94a3b8'
 };
 
 const studioLayoutStyle = {
@@ -381,6 +301,16 @@ const formatFileSize = (bytes) => {
 const cloneState = (value) => JSON.parse(JSON.stringify(value));
 
 const clamp = (value, min, max) => Math.min(max, Math.max(min, value));
+const normalizeTrackId = (value) => {
+  if (value === null || value === undefined) return null;
+  const normalized = String(value).trim();
+  return normalized.length > 0 ? normalized : null;
+};
+const isSameTrackId = (left, right) => {
+  const normalizedLeft = normalizeTrackId(left);
+  const normalizedRight = normalizeTrackId(right);
+  return normalizedLeft !== null && normalizedRight !== null && normalizedLeft === normalizedRight;
+};
 const API_BASE_URL = process.env.REACT_APP_API_URL || 'http://localhost:8000';
 
 const toTimeSignatureDisplay = (value) => {
@@ -405,13 +335,38 @@ const toTimeSignatureApi = (value) => {
   return { numerator: 4, denominator: 4 };
 };
 
+const getBarDurationSeconds = (bpmValue, signatureValue) => {
+  const safeBpm = Math.max(1, Number(bpmValue) || 120);
+  let numerator = 4;
+  let denominator = 4;
+
+  if (typeof signatureValue === 'string') {
+    const [n, d] = signatureValue.split('/').map((part) => parseInt(part, 10));
+    if (Number.isFinite(n) && n > 0) numerator = n;
+    if (Number.isFinite(d) && d > 0) denominator = d;
+  } else if (signatureValue && typeof signatureValue === 'object') {
+    if (Number.isFinite(signatureValue.numerator) && signatureValue.numerator > 0) {
+      numerator = signatureValue.numerator;
+    }
+    if (Number.isFinite(signatureValue.denominator) && signatureValue.denominator > 0) {
+      denominator = signatureValue.denominator;
+    }
+  }
+
+  const secondsPerQuarter = 60 / safeBpm;
+  const beatFactor = 4 / denominator;
+  const secondsPerBeat = secondsPerQuarter * beatFactor;
+  return Math.max(0.1, numerator * secondsPerBeat);
+};
+
 const mapTrackFromApi = (track, index) => {
   const type = track?.type === 'midi' ? 'midi' : 'audio';
   const volumeDb = typeof track?.volume === 'number' ? track.volume : 0.7;
   const panDb = typeof track?.pan === 'number' ? track.pan : 0;
+  const normalizedTrackId = normalizeTrackId(track?.id);
 
   return {
-    id: track.id,
+    id: normalizedTrackId ?? track.id,
     name: track.name || `Track ${index + 1}`,
     type,
     icon: type === 'audio' ? '🎙️' : '🎹',
@@ -427,7 +382,7 @@ const mapTrackFromApi = (track, index) => {
 
 const mapClipFromApi = (clip) => ({
   id: clip.id,
-  trackId: clip.track_id || clip.trackId,
+  trackId: normalizeTrackId(clip.track_id ?? clip.trackId) ?? clip.track_id ?? clip.trackId,
   name: clip.name || 'New Clip',
   type: clip.type || 'audio',
   startTime: Number(clip.start_time ?? clip.startTime ?? 0),
@@ -466,15 +421,6 @@ const clipToApiPayload = (clip) => ({
   settings: clip.settings || {}
 });
 
-const DEFAULT_READINESS_CHECKLIST = {
-  projectLoaded: false,
-  tracksReady: false,
-  clipsReady: false,
-  editedTimeline: false,
-  savedToDb: false,
-  reloadedFromDb: false
-};
-
 const DAWEditorPage = () => {
   const navigate = useNavigate();
   const { projectId } = useParams();
@@ -485,14 +431,19 @@ const DAWEditorPage = () => {
   const [showAssetPanel, setShowAssetPanel] = useState(() => !getIsCompactLayout());
   const [showTrackPanel, setShowTrackPanel] = useState(() => !getIsCompactLayout());
   const [showInspectorPanel, setShowInspectorPanel] = useState(() => !getIsCompactLayout());
+  const [showBottomPanel, setShowBottomPanel] = useState(true);
+  const [sidebarCollapsed, setSidebarCollapsed] = useState(false);
+  const [sidebarWidth, setSidebarWidth] = useState(240);
+  const [leftPanelCollapsed, setLeftPanelCollapsed] = useState(false);
+  const [leftPanelWidth, setLeftPanelWidth] = useState(228);
+  const [rightPanelCollapsed, setRightPanelCollapsed] = useState(false);
+  const [rightPanelWidth, setRightPanelWidth] = useState(248);
   const [leftPanelTab, setLeftPanelTab] = useState('files');
   const [rightPanelTab, setRightPanelTab] = useState('effects');
   const [bottomPanelTab, setBottomPanelTab] = useState('piano');
   const [saveStatus, setSaveStatus] = useState('idle');
   const [studioMessage, setStudioMessage] = useState('');
   const [audioLibraryItems, setAudioLibraryItems] = useState([]);
-  const [showReadinessChecklist, setShowReadinessChecklist] = useState(true);
-  const [readinessChecklist, setReadinessChecklist] = useState(DEFAULT_READINESS_CHECKLIST);
   const successfulFetchCountRef = useRef(0);
 
   // Modal states
@@ -582,40 +533,7 @@ const DAWEditorPage = () => {
     });
   }, [history]);
 
-  const readinessItems = [
-    { key: 'projectLoaded', label: 'Project loaded', hint: 'Open editor without errors.' },
-    { key: 'tracksReady', label: 'Track controls', hint: 'Add/edit track, mute/solo/type.' },
-    { key: 'clipsReady', label: 'Clip creation', hint: 'Create or paste at least one clip.' },
-    { key: 'editedTimeline', label: 'Timeline editing', hint: 'Move, resize, split, or quantize clip.' },
-    { key: 'savedToDb', label: 'Save to DB', hint: 'Use Save and see success status.' },
-    { key: 'reloadedFromDb', label: 'Reload verified', hint: 'Refresh/reload and confirm state persisted.' }
-  ];
-
-  const markChecklistStep = useCallback((key) => {
-    setReadinessChecklist((prev) => {
-      if (prev[key]) return prev;
-      return { ...prev, [key]: true };
-    });
-  }, []);
-
-  const toggleChecklistStep = useCallback((key) => {
-    setReadinessChecklist((prev) => ({ ...prev, [key]: !prev[key] }));
-  }, []);
-
-  const resetChecklist = useCallback(() => {
-    setReadinessChecklist(DEFAULT_READINESS_CHECKLIST);
-  }, []);
-
-  const completeChecklist = useCallback(() => {
-    setReadinessChecklist({
-      projectLoaded: true,
-      tracksReady: true,
-      clipsReady: true,
-      editedTimeline: true,
-      savedToDb: true,
-      reloadedFromDb: true
-    });
-  }, []);
+  const markChecklistStep = useCallback(() => {}, []);
 
   const fetchProject = useCallback(async () => {
     try {
@@ -743,11 +661,6 @@ const DAWEditorPage = () => {
     const handleResize = () => {
       const compact = getIsCompactLayout();
       setIsCompactLayout(compact);
-      if (!compact) {
-        setShowAssetPanel(true);
-        setShowTrackPanel(true);
-        setShowInspectorPanel(true);
-      }
     };
 
     window.addEventListener('resize', handleResize);
@@ -806,7 +719,7 @@ const DAWEditorPage = () => {
           handleDeleteSelectedClips();
         }
       }
-      // Modal shortcuts
+      // Panel and Modal shortcuts
       if (!e.ctrlKey && !e.metaKey && !e.altKey) {
         switch (e.key.toLowerCase()) {
           case 'p':
@@ -824,6 +737,28 @@ const DAWEditorPage = () => {
           case ',':
             e.preventDefault();
             setShowSettings(true);
+            break;
+          case 't':
+            e.preventDefault();
+            handleSidebarToggle();
+            break;
+          case 'b':
+            e.preventDefault();
+            setShowBottomPanel(prev => !prev);
+            break;
+          case 'r':
+            e.preventDefault();
+            setShowInspectorPanel(prev => !prev);
+            break;
+          case 'f':
+            e.preventDefault();
+            setShowAssetPanel(prev => !prev);
+            break;
+          case 'a':
+            if (!editingTrackId) {
+              e.preventDefault();
+              handleAddTrack();
+            }
             break;
           case 'escape':
             // Close all modals
@@ -1179,7 +1114,7 @@ const DAWEditorPage = () => {
   };
 
   const handleZoomToFit = () => {
-    const maxTime = Math.max(...clips.map(c => c.startTime + c.duration), 60);
+    const maxTime = timelineDuration;
     const newZoom = Math.min(200, Math.max(50, Math.floor((800 / maxTime) * 5)));
     setZoom(newZoom);
   };
@@ -1203,7 +1138,7 @@ const DAWEditorPage = () => {
   };
 
   const handleSkipToEnd = () => {
-    const maxTime = Math.max(...clips.map(c => c.startTime + c.duration), 0);
+    const maxTime = timelineDuration;
     audioEngine.seek(maxTime);
     syncTransportFromSeconds(maxTime);
   };
@@ -1279,20 +1214,31 @@ const DAWEditorPage = () => {
   };
 
   const handleDeleteTrack = async (trackId) => {
-    const nextTracks = tracks
-      .filter((track) => track.id !== trackId)
-      .map((track, index) => ({ ...track, selected: index === 0 ? true : track.selected }));
-    const normalizedTracks = nextTracks.some((track) => track.selected)
-      ? nextTracks
-      : nextTracks.map((track, index) => ({ ...track, selected: index === 0 }));
-    const nextClips = clips.filter((clip) => clip.trackId !== trackId);
+    const normalizedTrackId = normalizeTrackId(trackId);
+    if (normalizedTrackId === null) return;
+
+    const deletedTrackIndex = tracks.findIndex((track) => isSameTrackId(track.id, normalizedTrackId));
+    const remainingTracks = tracks.filter((track) => !isSameTrackId(track.id, normalizedTrackId));
+    const selectedRemainingTrack = remainingTracks.find((track) => track.selected);
+    const fallbackIndex = Math.min(
+      Math.max(deletedTrackIndex, 0),
+      Math.max(remainingTracks.length - 1, 0)
+    );
+    const fallbackTrackId = remainingTracks[fallbackIndex]?.id ?? remainingTracks[0]?.id ?? null;
+    const nextSelectedTrackId = selectedRemainingTrack?.id ?? fallbackTrackId;
+
+    const normalizedTracks = remainingTracks.map((track) => ({
+      ...track,
+      selected: nextSelectedTrackId !== null && isSameTrackId(track.id, nextSelectedTrackId)
+    }));
+    const nextClips = clips.filter((clip) => !isSameTrackId(clip.trackId, normalizedTrackId));
 
     setTracks(normalizedTracks);
     setClips(nextClips);
     pushHistory(normalizedTracks, nextClips);
 
     try {
-      await apiService.deleteTrack(projectId, trackId);
+      await apiService.deleteTrack(projectId, normalizedTrackId);
     } catch (persistError) {
       setError(persistError.message || 'Failed to delete track');
       fetchProject();
@@ -1382,6 +1328,95 @@ const DAWEditorPage = () => {
   };
 
   // Add track handler
+  const handleSidebarToggle = () => {
+    setSidebarCollapsed(prev => !prev);
+  };
+
+  const handleSidebarWidthChange = (newWidth) => {
+    setSidebarWidth(newWidth);
+  };
+
+  const handleLeftPanelToggle = () => {
+    setLeftPanelCollapsed(prev => !prev);
+  };
+
+  const handleLeftPanelWidthChange = (newWidth) => {
+    setLeftPanelWidth(newWidth);
+  };
+
+  const handleRightPanelToggle = () => {
+    setRightPanelCollapsed(prev => !prev);
+  };
+
+  const handleRightPanelWidthChange = (newWidth) => {
+    setRightPanelWidth(newWidth);
+  };
+
+  const handleAudioFileDropOnTrack = async (trackId, files) => {
+    const normalizedTrackId = normalizeTrackId(trackId);
+    if (normalizedTrackId === null) return;
+
+    const track = tracks.find((t) => isSameTrackId(t.id, normalizedTrackId));
+    if (!track) return;
+
+    try {
+      setStudioMessage(`Processing ${files.length} audio file${files.length > 1 ? 's' : ''}...`);
+      
+      const newClips = [];
+      let currentTimeOffset = 0; // Start at the beginning of the track
+      
+      for (const file of files) {
+        const uploadResponse = await apiService.uploadAudioFile(file);
+        const uploaded = uploadResponse?.data || uploadResponse || {};
+        const duration = Math.max(0.25, await readAudioFileDuration(file));
+        const fallbackFileName = String(file.name || 'Imported Audio');
+        const fileName = uploaded.file_name || uploaded.fileName || fallbackFileName;
+        const extension = fallbackFileName.includes('.') ? fallbackFileName.split('.').pop().toLowerCase() : 'audio';
+
+        const clipResponse = await apiService.addClip(projectId, {
+          trackId: normalizedTrackId,
+          name: uploaded.original_name || uploaded.originalName || fallbackFileName,
+          type: 'audio',
+          startTime: currentTimeOffset, // Sequential placement
+          duration,
+          fileName,
+          filePath: uploaded.file_path || uploaded.filePath || null,
+          fileSize: Number(uploaded.file_size ?? uploaded.fileSize ?? file.size) || null,
+          sampleRate: Number(uploaded.sample_rate ?? uploaded.sampleRate ?? 0) || null,
+          bitDepth: Number(uploaded.bit_depth ?? uploaded.bitDepth ?? 0) || null,
+          channels: Number(uploaded.channels ?? 0) || null,
+          settings: {
+            source: 'track-drop',
+            fileName,
+            format: extension
+          }
+        });
+
+        const createdClip = mapClipFromApi(clipResponse?.data || clipResponse);
+        newClips.push(createdClip);
+        currentTimeOffset += duration; // Place next clip after this one
+      }
+
+      // Update all clips at once for better performance
+      setClips(prev => {
+        const updatedClips = [...prev, ...newClips];
+        pushHistory(tracks, updatedClips);
+        return updatedClips;
+      });
+
+      setStudioMessage(`Added ${files.length} audio file${files.length > 1 ? 's' : ''} to ${track.name}`);
+      fetchAudioLibrary();
+      
+      // Force timeline re-render by triggering a state change after a short delay
+      setTimeout(() => {
+        setClips(prev => [...prev]); // Force re-render
+      }, 50);
+      
+    } catch (error) {
+      setStudioMessage(`Failed to add audio files: ${error.message}`);
+    }
+  };
+
   const handleAddTrack = async () => {
     const trackNumber = tracks.filter(t => t.type === 'audio').length + 1;
     try {
@@ -1439,18 +1474,35 @@ const DAWEditorPage = () => {
   };
 
   const handleClipMove = (clipId, newTrackId, newStartTime) => {
+    const normalizedTrackId = normalizeTrackId(newTrackId);
+    if (normalizedTrackId === null) return;
+
+    setClips((prev) => prev.map((clip) => (
+      clip.id === clipId
+        ? { ...clip, trackId: normalizedTrackId, startTime: newStartTime }
+        : clip
+    )));
+    markChecklistStep('editedTimeline');
+  };
+
+  const handleClipMoveEnd = (clipId, newTrackId, newStartTime) => {
+    const normalizedTrackId = normalizeTrackId(newTrackId);
+    if (normalizedTrackId === null) return;
+
     const sourceClip = clips.find((clip) => clip.id === clipId);
     if (!sourceClip) return;
-    const updatedClip = { ...sourceClip, trackId: newTrackId, startTime: newStartTime };
+    const updatedClip = { ...sourceClip, trackId: normalizedTrackId, startTime: newStartTime };
 
-    setClips(prev => {
-      const newClips = prev.map(c =>
-        c.id === clipId ? updatedClip : c
-      );
+    setClips((prev) => {
+      const newClips = prev.map((clip) => (
+        clip.id === clipId
+          ? { ...clip, trackId: normalizedTrackId, startTime: newStartTime }
+          : clip
+      ));
       pushHistory(tracks, newClips);
       return newClips;
     });
-    scheduleClipPersist(updatedClip, 'move', 250);
+    scheduleClipPersist(updatedClip, 'move', 0);
     markChecklistStep('editedTimeline');
   };
 
@@ -1507,8 +1559,9 @@ const DAWEditorPage = () => {
       return;
     }
 
+    const normalizedTrackId = normalizeTrackId(trackId);
     let nextTracksState = tracks;
-    let targetTrack = tracks.find((track) => track.id === trackId) || tracks[0] || null;
+    let targetTrack = tracks.find((track) => isSameTrackId(track.id, normalizedTrackId)) || tracks[0] || null;
 
     if (!targetTrack) {
       try {
@@ -1599,13 +1652,16 @@ const DAWEditorPage = () => {
   }, [tracks, projectId, pushHistory, markChecklistStep, fetchAudioLibrary]);
 
   const handleAddClip = async (trackId, startTime) => {
-    const track = tracks.find(t => t.id === trackId);
+    const normalizedTrackId = normalizeTrackId(trackId);
+    if (normalizedTrackId === null) return;
+
+    const track = tracks.find((t) => isSameTrackId(t.id, normalizedTrackId));
     if (!track) return;
 
-    const clipCount = clips.filter(c => c.trackId === trackId).length;
+    const clipCount = clips.filter((c) => isSameTrackId(c.trackId, normalizedTrackId)).length;
     try {
       const response = await apiService.addClip(projectId, {
-        trackId,
+        trackId: normalizedTrackId,
         name: `${track.name} Clip ${clipCount + 1}`,
         type: track.type,
         startTime,
@@ -1625,8 +1681,8 @@ const DAWEditorPage = () => {
 
   const selectedTrack = tracks.find(track => track.selected);
   const arrangementLength = Math.max(...clips.map(c => c.startTime + c.duration), 0);
-  const checklistDoneCount = Object.values(readinessChecklist).filter(Boolean).length;
-  const checklistTotalCount = readinessItems.length;
+  const timelineDuration = Math.max(arrangementLength + 15, 300);
+  const barSnapSeconds = getBarDurationSeconds(bpm, timeSignature);
   const pianoRollNotes = clips
     .filter(clip => clip.type === 'midi')
     .slice(0, 10)
@@ -1763,63 +1819,21 @@ const DAWEditorPage = () => {
             >
               Export (E)
             </button>
-            <button
-              type="button"
-              style={quickNavBtnStyle}
-              onClick={() => setShowReadinessChecklist((prev) => !prev)}
-            >
-              {showReadinessChecklist ? 'Hide Checklist' : 'Show Checklist'}
-            </button>
             {studioMessage && <span style={{ color: '#fde68a', fontSize: '12px' }}>{studioMessage}</span>}
-            {isCompactLayout && (
-              <>
-                <button type="button" style={{ ...quickNavBtnStyle, padding: '4px 8px', fontSize: '10px' }} onClick={() => setShowAssetPanel(prev => !prev)}>
-                  {showAssetPanel ? 'Hide Left' : 'Show Left'}
-                </button>
-                <button type="button" style={{ ...quickNavBtnStyle, padding: '4px 8px', fontSize: '10px' }} onClick={() => setShowTrackPanel(prev => !prev)}>
-                  {showTrackPanel ? 'Hide Tracks' : 'Show Tracks'}
-                </button>
-                <button type="button" style={{ ...quickNavBtnStyle, padding: '4px 8px', fontSize: '10px' }} onClick={() => setShowInspectorPanel(prev => !prev)}>
-                  {showInspectorPanel ? 'Hide Right' : 'Show Right'}
-                </button>
-              </>
-            )}
+            <button type="button" style={{ ...quickNavBtnStyle, padding: '4px 8px', fontSize: '10px' }} onClick={() => setShowAssetPanel(prev => !prev)}>
+              {showAssetPanel ? 'Hide Left (F)' : 'Show Left (F)'}
+            </button>
+            <button type="button" style={{ ...quickNavBtnStyle, padding: '4px 8px', fontSize: '10px' }} onClick={() => setShowTrackPanel(prev => !prev)}>
+              {showTrackPanel ? 'Hide Tracks' : 'Show Tracks'} (A)
+            </button>
+            <button type="button" style={{ ...quickNavBtnStyle, padding: '4px 8px', fontSize: '10px' }} onClick={() => setShowInspectorPanel(prev => !prev)}>
+              {showInspectorPanel ? 'Hide Right (R)' : 'Show Right (R)'}
+            </button>
+            <button type="button" style={{ ...quickNavBtnStyle, padding: '4px 8px', fontSize: '10px' }} onClick={() => setShowBottomPanel(prev => !prev)}>
+              {showBottomPanel ? 'Hide Bottom (B)' : 'Show Bottom (B)'}
+            </button>
           </div>
         </div>
-
-        {showReadinessChecklist && !loading && !error && (
-          <div style={checklistPanelStyle}>
-            <div style={checklistHeaderStyle}>
-              <div style={statusGroupStyle}>
-                <span style={checklistTitleStyle}>Readiness Checklist</span>
-                <span style={checklistCountStyle}>{checklistDoneCount}/{checklistTotalCount}</span>
-              </div>
-              <div style={checklistActionsStyle}>
-                <button type="button" style={checklistActionBtnStyle} onClick={completeChecklist}>
-                  Complete All
-                </button>
-                <button type="button" style={checklistActionBtnStyle} onClick={resetChecklist}>
-                  Reset
-                </button>
-              </div>
-            </div>
-            <div style={checklistItemsWrapStyle}>
-              {readinessItems.map((item) => (
-                <label key={item.key} style={checklistItemStyle}>
-                  <input
-                    type="checkbox"
-                    checked={!!readinessChecklist[item.key]}
-                    onChange={() => toggleChecklistStep(item.key)}
-                  />
-                  <span>
-                    <span style={checklistItemTitleStyle}>{item.label}</span>
-                    <span style={checklistItemHintStyle}>{item.hint}</span>
-                  </span>
-                </label>
-              ))}
-            </div>
-          </div>
-        )}
 
         <div style={contentStyle}>
           {loading ? (
@@ -1853,73 +1867,54 @@ const DAWEditorPage = () => {
           ) : (
             <div style={studioLayoutStyle}>
               <div style={studioRowStyle}>
-                {(!isCompactLayout || showAssetPanel) && (
-                  <aside style={{ ...panelStyle, width: isCompactLayout ? '200px' : '228px' }}>
-                    <div style={{ height: '38px', display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '0 12px', borderBottom: '1px solid rgba(148, 163, 184, 0.2)', fontSize: '12px', textTransform: 'uppercase', letterSpacing: '0.6px', fontWeight: 700, color: '#dbeafe' }}>
-                      Left Panel
-                    </div>
-                    <div style={{ display: 'flex', gap: '6px', padding: '8px 10px 6px' }}>
-                      <button
-                        type="button"
-                        style={{ 
-                          border: leftPanelTab === 'files' ? '1px solid rgba(96, 165, 250, 0.65)' : '1px solid rgba(148, 163, 184, 0.28)',
-                          borderRadius: '7px',
-                          padding: '4px 8px',
-                          background: leftPanelTab === 'files' ? 'rgba(30, 64, 175, 0.35)' : 'rgba(15, 23, 42, 0.4)',
-                          color: leftPanelTab === 'files' ? '#eff6ff' : '#bfdbfe',
-                          fontSize: '11px',
-                          fontWeight: 600,
-                          cursor: 'pointer'
-                        }}
-                        onClick={() => setLeftPanelTab('files')}
-                      >
-                        Files
-                      </button>
-                      <button
-                        type="button"
-                        style={{ 
-                          border: leftPanelTab === 'instruments' ? '1px solid rgba(96, 165, 250, 0.65)' : '1px solid rgba(148, 163, 184, 0.28)',
-                          borderRadius: '7px',
-                          padding: '4px 8px',
-                          background: leftPanelTab === 'instruments' ? 'rgba(30, 64, 175, 0.35)' : 'rgba(15, 23, 42, 0.4)',
-                          color: leftPanelTab === 'instruments' ? '#eff6ff' : '#bfdbfe',
-                          fontSize: '11px',
-                          fontWeight: 600,
-                          cursor: 'pointer'
-                        }}
-                        onClick={() => setLeftPanelTab('instruments')}
-                      >
-                        Instruments
-                      </button>
-                    </div>
-                    <div style={{ flex: 1, padding: '0 10px 10px', overflowY: 'auto' }}>
-                      {(leftPanelTab === 'files' ? assetLibrary : instrumentLibrary).length === 0 ? (
-                        <div style={{ fontSize: '11px', color: '#94a3b8', padding: '8px 4px' }}>
-                          {leftPanelTab === 'files'
-                            ? 'No uploaded files yet. Open Sound Library (L) to upload audio.'
-                            : 'No MIDI tracks yet. Change a track type to MIDI to populate this list.'}
-                        </div>
-                      ) : (
-                        (leftPanelTab === 'files' ? assetLibrary : instrumentLibrary).map((item) => (
-                          <div key={item.name} style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: '8px', border: '1px solid rgba(148, 163, 184, 0.2)', borderRadius: '8px', padding: '8px 9px', marginBottom: '8px', background: 'rgba(15, 23, 42, 0.44)' }}>
-                            <div>
-                              <div style={{ fontSize: '12px', color: '#eff6ff', fontWeight: 600 }}>{item.name}</div>
-                              <div style={{ fontSize: '11px', color: '#93c5fd' }}>{item.type || item.family}</div>
+                {showAssetPanel && (
+                  <CollapsiblePanel
+                    title="Left Panel"
+                    position="left"
+                    collapsed={leftPanelCollapsed}
+                    onToggleCollapse={handleLeftPanelToggle}
+                    onWidthChange={handleLeftPanelWidthChange}
+                    width={leftPanelWidth}
+                    tabs={[
+                      { id: 'files', label: 'Files' },
+                      { id: 'instruments', label: 'Instruments' }
+                    ]}
+                    activeTab={leftPanelTab}
+                    onTabChange={setLeftPanelTab}
+                  >
+                    {(leftPanelTab === 'files' ? assetLibrary : instrumentLibrary).length === 0 ? (
+                      <div style={{ fontSize: '11px', color: '#94a3b8', padding: '8px 4px' }}>
+                        {leftPanelTab === 'files'
+                          ? 'No uploaded files yet. Open Sound Library (L) to upload audio.'
+                          : 'No MIDI tracks yet. Change a track type to MIDI to populate this list.'}
+                      </div>
+                    ) : (
+                      (leftPanelTab === 'files' ? assetLibrary : instrumentLibrary).map((item) => (
+                        <div key={item.name} style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: '8px', border: '1px solid rgba(148, 163, 184, 0.2)', borderRadius: '8px', padding: '8px 9px', marginBottom: '8px', background: 'rgba(15, 23, 42, 0.44)' }}>
+                          <div style={{ flex: 1, minWidth: 0 }}>
+                            <div style={{ fontSize: '12px', color: '#eff6ff', fontWeight: 600, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }} title={item.name}>
+                              {item.name}
                             </div>
-                            <span style={{ border: '1px solid rgba(148, 163, 184, 0.3)', borderRadius: '999px', padding: '2px 6px', fontSize: '10px', color: '#cbd5e1' }}>{item.detail || item.preset}</span>
+                            <div style={{ fontSize: '11px', color: '#93c5fd', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis', maxWidth: '120px' }} title={item.type || item.family}>
+                              {item.type || item.family}
+                            </div>
                           </div>
-                        ))
-                      )}
-                    </div>
-                  </aside>
+                          <span style={{ border: '1px solid rgba(148, 163, 184, 0.3)', borderRadius: '999px', padding: '2px 6px', fontSize: '10px', color: '#cbd5e1' }}>{item.detail || item.preset}</span>
+                        </div>
+                      ))
+                    )}
+                  </CollapsiblePanel>
                 )}
 
                 <div style={centerWorkspaceStyle}>
                   <div style={arrangementRowStyle}>
-                    {(!isCompactLayout || showTrackPanel) && (
+                    {showTrackPanel && (
                       <div style={{ ...trackWrapStyle, width: isCompactLayout ? '200px' : null }}>
                         <DAWSidebar
                           compact={isCompactLayout}
+                          collapsed={sidebarCollapsed}
+                          onToggleCollapse={handleSidebarToggle}
+                          onWidthChange={handleSidebarWidthChange}
                           tracks={tracks}
                           onTrackSelect={handleTrackSelect}
                           onTrackMute={handleTrackMute}
@@ -1936,6 +1931,7 @@ const DAWEditorPage = () => {
                           editName={editName}
                           onEditNameChange={handleEditNameChange}
                           onEditNameSubmit={handleEditNameSubmit}
+                          onAudioFileDrop={handleAudioFileDropOnTrack}
                         />
                       </div>
                     )}
@@ -1945,13 +1941,14 @@ const DAWEditorPage = () => {
                         clips={clips}
                         currentTime={playheadTime}
                         zoom={zoom}
-                        duration={60}
+                        duration={timelineDuration}
                         selectedClipIds={selectedClipIds}
                         loopEnabled={loopEnabled}
                         loopStart={loopStart}
                         loopEnd={loopEnd}
                         snapEnabled={snapGrid > 0}
                         snapGrid={snapGrid || 0.25}
+                        barSnapSeconds={barSnapSeconds}
                         onTimelineClick={handleTimelineClick}
                         onClipClick={handleClipClick}
                         onClipsSelected={handleClipsSelected}
@@ -1959,13 +1956,16 @@ const DAWEditorPage = () => {
                         onClipSplit={handleClipSplit}
                         onAddClip={handleAddClip}
                         onClipMove={handleClipMove}
+                        onClipMoveEnd={handleClipMoveEnd}
                         onClipResize={handleClipResize}
+                        onZoomChange={(nextZoom) => setZoom(clamp(nextZoom, 50, 200))}
                         onExternalAudioDrop={handleExternalAudioDrop}
                       />
                     </div>
                   </div>
 
-                  <div style={bottomPanelStyle}>
+                  {showBottomPanel && (
+                    <div style={bottomPanelStyle}>
                     <div style={bottomHeaderStyle}>
                       <span style={bottomTitleStyle}>Bottom Panel</span>
                       <div style={{ display: 'flex', gap: '6px', flexWrap: 'wrap' }}>
@@ -2057,93 +2057,68 @@ const DAWEditorPage = () => {
                         </div>
                       )}
                     </div>
-                  </div>
+                    </div>
+                  )}
                 </div>
 
-                {(!isCompactLayout || showInspectorPanel) && (
-                  <aside style={{ ...rightPanelStyle, width: isCompactLayout ? '220px' : '248px' }}>
-                    <div style={{ height: '38px', display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '0 12px', borderBottom: '1px solid rgba(148, 163, 184, 0.2)', fontSize: '12px', textTransform: 'uppercase', letterSpacing: '0.6px', fontWeight: 700, color: '#dbeafe' }}>
-                      Right Panel
-                    </div>
-                    <div style={{ display: 'flex', gap: '6px', padding: '8px 10px 6px' }}>
-                      <button
-                        type="button"
-                        style={{ 
-                          border: rightPanelTab === 'effects' ? '1px solid rgba(96, 165, 250, 0.65)' : '1px solid rgba(148, 163, 184, 0.28)',
-                          borderRadius: '7px',
-                          padding: '4px 8px',
-                          background: rightPanelTab === 'effects' ? 'rgba(30, 64, 175, 0.35)' : 'rgba(15, 23, 42, 0.4)',
-                          color: rightPanelTab === 'effects' ? '#eff6ff' : '#bfdbfe',
-                          fontSize: '11px',
-                          fontWeight: 600,
-                          cursor: 'pointer'
-                        }}
-                        onClick={() => setRightPanelTab('effects')}
-                      >
-                        Effects
-                      </button>
-                      <button
-                        type="button"
-                        style={{ 
-                          border: rightPanelTab === 'settings' ? '1px solid rgba(96, 165, 250, 0.65)' : '1px solid rgba(148, 163, 184, 0.28)',
-                          borderRadius: '7px',
-                          padding: '4px 8px',
-                          background: rightPanelTab === 'settings' ? 'rgba(30, 64, 175, 0.35)' : 'rgba(15, 23, 42, 0.4)',
-                          color: rightPanelTab === 'settings' ? '#eff6ff' : '#bfdbfe',
-                          fontSize: '11px',
-                          fontWeight: 600,
-                          cursor: 'pointer'
-                        }}
-                        onClick={() => setRightPanelTab('settings')}
-                      >
-                        Track Settings
-                      </button>
-                    </div>
-                    <div style={{ flex: 1, padding: '0 10px 10px', overflowY: 'auto' }}>
-                      {rightPanelTab === 'effects' ? (
-                        effectLibrary.map(effect => (
-                          <div key={effect.name} style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: '8px', border: '1px solid rgba(148, 163, 184, 0.2)', borderRadius: '8px', padding: '8px 9px', marginBottom: '8px', background: 'rgba(15, 23, 42, 0.44)' }}>
-                            <div>
-                              <div style={{ fontSize: '12px', color: '#eff6ff', fontWeight: 600 }}>{effect.name}</div>
-                              <div style={{ fontSize: '11px', color: '#93c5fd' }}>{effect.value}</div>
-                            </div>
-                            <span style={{ border: '1px solid rgba(148, 163, 184, 0.3)', borderRadius: '999px', padding: '2px 6px', fontSize: '10px', color: '#cbd5e1' }}>{effect.state}</span>
+                {showInspectorPanel && (
+                  <CollapsiblePanel
+                    title="Right Panel"
+                    position="right"
+                    collapsed={rightPanelCollapsed}
+                    onToggleCollapse={handleRightPanelToggle}
+                    onWidthChange={handleRightPanelWidthChange}
+                    width={rightPanelWidth}
+                    tabs={[
+                      { id: 'effects', label: 'Effects' },
+                      { id: 'settings', label: 'Track Settings' }
+                    ]}
+                    activeTab={rightPanelTab}
+                    onTabChange={setRightPanelTab}
+                  >
+                    {rightPanelTab === 'effects' ? (
+                      effectLibrary.map(effect => (
+                        <div key={effect.name} style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: '8px', border: '1px solid rgba(148, 163, 184, 0.2)', borderRadius: '8px', padding: '8px 9px', marginBottom: '8px', background: 'rgba(15, 23, 42, 0.44)' }}>
+                          <div>
+                            <div style={{ fontSize: '12px', color: '#eff6ff', fontWeight: 600 }}>{effect.name}</div>
+                            <div style={{ fontSize: '11px', color: '#93c5fd' }}>{effect.value}</div>
                           </div>
-                        ))
-                      ) : (
-                        <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
-                          <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: '8px', border: '1px solid rgba(148, 163, 184, 0.2)', borderRadius: '8px', padding: '8px 9px', marginBottom: '8px', background: 'rgba(15, 23, 42, 0.44)' }}>
-                            <div>
-                              <div style={{ fontSize: '12px', color: '#eff6ff', fontWeight: 600 }}>Selected Track</div>
-                              <div style={{ fontSize: '11px', color: '#93c5fd' }}>{selectedTrack?.name || 'None selected'}</div>
-                            </div>
-                            <span style={{ border: '1px solid rgba(148, 163, 184, 0.3)', borderRadius: '999px', padding: '2px 6px', fontSize: '10px', color: '#cbd5e1' }}>{selectedTrack?.type || 'n/a'}</span>
-                          </div>
-                          <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: '8px', border: '1px solid rgba(148, 163, 184, 0.2)', borderRadius: '8px', padding: '8px 9px', marginBottom: '8px', background: 'rgba(15, 23, 42, 0.44)' }}>
-                            <div>
-                              <div style={{ fontSize: '12px', color: '#eff6ff', fontWeight: 600 }}>Volume</div>
-                              <div style={{ fontSize: '11px', color: '#93c5fd' }}>{selectedTrack?.volume ?? 80}%</div>
-                            </div>
-                            <span style={{ border: '1px solid rgba(148, 163, 184, 0.3)', borderRadius: '999px', padding: '2px 6px', fontSize: '10px', color: '#cbd5e1' }}>Track</span>
-                          </div>
-                          <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: '8px', border: '1px solid rgba(148, 163, 184, 0.2)', borderRadius: '8px', padding: '8px 9px', marginBottom: '8px', background: 'rgba(15, 23, 42, 0.44)' }}>
-                            <div>
-                              <div style={{ fontSize: '12px', color: '#eff6ff', fontWeight: 600 }}>Pan</div>
-                              <div style={{ fontSize: '11px', color: '#93c5fd' }}>{selectedTrack?.pan ?? 0}</div>
-                            </div>
-                            <span style={{ border: '1px solid rgba(148, 163, 184, 0.3)', borderRadius: '999px', padding: '2px 6px', fontSize: '10px', color: '#cbd5e1' }}>L/R</span>
-                          </div>
-                          <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: '8px', border: '1px solid rgba(148, 163, 184, 0.2)', borderRadius: '8px', padding: '8px 9px', marginBottom: '8px', background: 'rgba(15, 23, 42, 0.44)' }}>
-                            <div>
-                              <div style={{ fontSize: '12px', color: '#eff6ff', fontWeight: 600 }}>Monitoring</div>
-                              <div style={{ fontSize: '11px', color: '#93c5fd' }}>{selectedTrack?.armed ? 'Armed for recording' : 'Input monitor off'}</div>
-                            </div>
-                            <span style={{ border: '1px solid rgba(148, 163, 184, 0.3)', borderRadius: '999px', padding: '2px 6px', fontSize: '10px', color: '#cbd5e1' }}>{selectedTrack?.armed ? 'REC' : 'IDLE'}</span>
-                          </div>
+                          <span style={{ border: '1px solid rgba(148, 163, 184, 0.3)', borderRadius: '999px', padding: '2px 6px', fontSize: '10px', color: '#cbd5e1' }}>{effect.state}</span>
                         </div>
-                      )}
-                    </div>
-                  </aside>
+                      ))
+                    ) : (
+                      <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
+                        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: '8px', border: '1px solid rgba(148, 163, 184, 0.2)', borderRadius: '8px', padding: '8px 9px', marginBottom: '8px', background: 'rgba(15, 23, 42, 0.44)' }}>
+                          <div>
+                            <div style={{ fontSize: '12px', color: '#eff6ff', fontWeight: 600 }}>Selected Track</div>
+                            <div style={{ fontSize: '11px', color: '#93c5fd' }}>{selectedTrack?.name || 'None selected'}</div>
+                          </div>
+                          <span style={{ border: '1px solid rgba(148, 163, 184, 0.3)', borderRadius: '999px', padding: '2px 6px', fontSize: '10px', color: '#cbd5e1' }}>{selectedTrack?.type || 'n/a'}</span>
+                        </div>
+                        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: '8px', border: '1px solid rgba(148, 163, 184, 0.2)', borderRadius: '8px', padding: '8px 9px', marginBottom: '8px', background: 'rgba(15, 23, 42, 0.44)' }}>
+                          <div>
+                            <div style={{ fontSize: '12px', color: '#eff6ff', fontWeight: 600 }}>Volume</div>
+                            <div style={{ fontSize: '11px', color: '#93c5fd' }}>{selectedTrack?.volume ?? 80}%</div>
+                          </div>
+                          <span style={{ border: '1px solid rgba(148, 163, 184, 0.3)', borderRadius: '999px', padding: '2px 6px', fontSize: '10px', color: '#cbd5e1' }}>Track</span>
+                        </div>
+                        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: '8px', border: '1px solid rgba(148, 163, 184, 0.2)', borderRadius: '8px', padding: '8px 9px', marginBottom: '8px', background: 'rgba(15, 23, 42, 0.44)' }}>
+                          <div>
+                            <div style={{ fontSize: '12px', color: '#eff6ff', fontWeight: 600 }}>Pan</div>
+                            <div style={{ fontSize: '11px', color: '#93c5fd' }}>{selectedTrack?.pan ?? 0}</div>
+                          </div>
+                          <span style={{ border: '1px solid rgba(148, 163, 184, 0.3)', borderRadius: '999px', padding: '2px 6px', fontSize: '10px', color: '#cbd5e1' }}>L/R</span>
+                        </div>
+                        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: '8px', border: '1px solid rgba(148, 163, 184, 0.2)', borderRadius: '8px', padding: '8px 9px', marginBottom: '8px', background: 'rgba(15, 23, 42, 0.44)' }}>
+                          <div>
+                            <div style={{ fontSize: '12px', color: '#eff6ff', fontWeight: 600 }}>Monitoring</div>
+                            <div style={{ fontSize: '11px', color: '#93c5fd' }}>{selectedTrack?.armed ? 'Armed for recording' : 'Input monitor off'}</div>
+                          </div>
+                          <span style={{ border: '1px solid rgba(148, 163, 184, 0.3)', borderRadius: '999px', padding: '2px 6px', fontSize: '10px', color: '#cbd5e1' }}>{selectedTrack?.armed ? 'REC' : 'IDLE'}</span>
+                        </div>
+                      </div>
+                    )}
+                  </CollapsiblePanel>
                 )}
               </div>
             </div>

@@ -99,59 +99,9 @@ CREATE TRIGGER update_tracks_updated_at BEFORE UPDATE ON tracks
 CREATE TRIGGER update_clips_updated_at BEFORE UPDATE ON clips
     FOR EACH ROW EXECUTE FUNCTION update_updated_at_column();
 
--- Insert some sample data for testing
-INSERT INTO projects (name, description, bpm) VALUES 
-('Demo Project', 'A sample project to get started', 120),
-('Podcast Episode', 'Sample podcast project', 140),
-('Music Production', 'Sample music project', 128)
-ON CONFLICT DO NOTHING;
-
--- Get the first project ID for sample tracks
-DO $$
-DECLARE
-    demo_project_id UUID;
-BEGIN
-    SELECT id INTO demo_project_id FROM projects WHERE name = 'Demo Project' LIMIT 1;
-    
-    IF demo_project_id IS NOT NULL THEN
-        -- Insert sample tracks
-        INSERT INTO tracks (project_id, name, type, color) VALUES
-        (demo_project_id, 'Audio Track 1', 'audio', '#4CAF50'),
-        (demo_project_id, 'MIDI Track 1', 'midi', '#2196F3'),
-        (demo_project_id, 'Audio Track 2', 'audio', '#FF9800')
-        ON CONFLICT DO NOTHING;
-        
-        -- Get track IDs for sample clips
-        INSERT INTO clips (project_id, track_id, name, type, start_time, duration) 
-        SELECT 
-            demo_project_id,
-            t.id,
-            CASE 
-                WHEN t.name = 'Audio Track 1' THEN 'Drums'
-                WHEN t.name = 'MIDI Track 1' THEN 'Melody'
-                WHEN t.name = 'Audio Track 2' THEN 'Bass'
-            END,
-            t.type,
-            CASE 
-                WHEN t.name = 'Audio Track 1' THEN 0
-                WHEN t.name = 'MIDI Track 1' THEN 2
-                WHEN t.name = 'Audio Track 2' THEN 8
-            END,
-            CASE 
-                WHEN t.name = 'Audio Track 1' THEN 4
-                WHEN t.name = 'MIDI Track 1' THEN 6
-                WHEN t.name = 'Audio Track 2' THEN 3
-            END
-        FROM tracks t 
-        WHERE t.project_id = demo_project_id
-        ON CONFLICT DO NOTHING;
-    END IF;
-END $$;
-
 -- Log successful initialization
 DO $$
 BEGIN
     RAISE NOTICE 'Web DAW database initialized successfully';
     RAISE NOTICE 'Created tables: projects, tracks, clips, audio_files';
-    RAISE NOTICE 'Sample data inserted for testing';
 END $$;

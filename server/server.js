@@ -12,11 +12,12 @@ const morgan = require('morgan');
 const path = require('path');
 
 // Import database
-const { db, testConnection } = require('./src/config/database');
+const { testConnection } = require('./src/config/database');
 
 // Import routes
 const projectRoutes = require('./src/routes/projects');
 const authRoutes = require('./src/routes/auth');
+const audioRoutes = require('./src/routes/audio');
 
 // Import middleware
 const errorHandler = require('./src/middleware/errorHandler');
@@ -54,6 +55,7 @@ app.use(express.urlencoded({ extended: true, limit: '50mb' }));
 // API Routes
 app.use('/api/projects', projectRoutes);
 app.use('/api/auth', authRoutes);
+app.use('/api/audio', audioRoutes);
 
 // Health check endpoint
 app.get('/health', (req, res) => {
@@ -145,23 +147,25 @@ async function startServer() {
   }
 }
 
-startServer();
+if (require.main === module) {
+  startServer();
 
-// Graceful shutdown
-process.on('SIGTERM', () => {
-  console.log('🛑 SIGTERM received, shutting down gracefully');
-  server.close(() => {
-    console.log('✅ Process terminated');
-    process.exit(0);
+  // Graceful shutdown
+  process.on('SIGTERM', () => {
+    console.log('🛑 SIGTERM received, shutting down gracefully');
+    server.close(() => {
+      console.log('✅ Process terminated');
+      process.exit(0);
+    });
   });
-});
 
-process.on('SIGINT', () => {
-  console.log('🛑 SIGINT received, shutting down gracefully');
-  server.close(() => {
-    console.log('✅ Process terminated');
-    process.exit(0);
+  process.on('SIGINT', () => {
+    console.log('🛑 SIGINT received, shutting down gracefully');
+    server.close(() => {
+      console.log('✅ Process terminated');
+      process.exit(0);
+    });
   });
-});
+}
 
-module.exports = { app, server, io };
+module.exports = { app, server, io, startServer };

@@ -1,4 +1,4 @@
-import React, { useRef, useEffect, useState, useCallback } from 'react';
+import React, { useRef, useEffect, useState, useCallback, useMemo } from 'react';
 
 const timelineContainerStyle = {
   flex: 1,
@@ -169,12 +169,30 @@ const loopHighlightStyle = {
   zIndex: 50
 };
 
+const DRAG_THRESHOLD_PX = 2;
+const MIN_ZOOM = 50;
+const MAX_ZOOM = 200;
+const WHEEL_ZOOM_STEP = 5;
+const DRAG_PREVIEW_FRAME_MS = 16;
+
+const normalizeTrackId = (value) => {
+  if (value === null || value === undefined) return null;
+  const normalized = String(value).trim();
+  return normalized.length > 0 ? normalized : null;
+};
+
+const isSameTrackId = (left, right) => {
+  const normalizedLeft = normalizeTrackId(left);
+  const normalizedRight = normalizeTrackId(right);
+  return normalizedLeft !== null && normalizedRight !== null && normalizedLeft === normalizedRight;
+};
+
 const DAWTimeline = ({
   tracks = [],
   clips = [],
   currentTime = 0,
   zoom = 100,
-  duration = 300,
+  duration = 60,
   pixelsPerSecond = 20,
   selectedClipIds = [],
   loopEnabled = false,
@@ -188,7 +206,10 @@ const DAWTimeline = ({
   onClipSplit,
   onAddClip,
   onClipMove,
+  onClipMoveEnd,
   onClipResize,
+  barSnapSeconds = 0,
+  onZoomChange,
   onClipsSelected,
   onScrollSync,
   onExternalAudioDrop
@@ -201,7 +222,10 @@ const DAWTimeline = ({
   const [isDragging, setIsDragging] = useState(false);
   const [dragClip, setDragClip] = useState(null);
   const [dragStartX, setDragStartX] = useState(0);
-  const [dragOriginalStart, setDragOriginalStart] = useState(0);
+  const [dragStartY, setDragStartY] = useState(0);
+  const [dragPointerOffset, setDragPointerOffset] = useState(0);
+  const lastDragPositionRef = useRef(null);
+  const lastMovePreviewAtRef = useRef(0);
 
   // Resize state
   const [isResizing, setIsResizing] = useState(false);
@@ -217,6 +241,8 @@ const DAWTimeline = ({
   // Clipboard for copy/paste
   const [clipboard, setClipboard] = useState(null);
   const [dropLaneTrackId, setDropLaneTrackId] = useState(null);
+  const waveformCacheRef = useRef(new Map());
+  const midiCacheRef = useRef(new Map());
 
   const scale = (zoom / 100) * pixelsPerSecond;
   const totalWidth = duration * scale;
@@ -225,6 +251,14 @@ const DAWTimeline = ({
     if (!snapEnabled) return time;
     return Math.round(time / snapGrid) * snapGrid;
   }, [snapEnabled, snapGrid]);
+
+  const snapDragTime = useCallback((time) => {
+    const candidate = Number(barSnapSeconds);
+    if (Number.isFinite(candidate) && candidate > 0) {
+      return Math.round(time / candidate) * candidate;
+    }
+    return snapTime(time);
+  }, [barSnapSeconds, snapTime]);
 
   // Draw ruler
   useEffect(() => {
@@ -294,6 +328,26 @@ const DAWTimeline = ({
     onScrollSync?.(e.target.scrollTop);
   };
 
+  const handleTimelineWheel = useCallback((event) => {
+    const body = bodyRef.current;
+    if (!body) return;
+
+    if ((event.ctrlKey || event.metaKey) && typeof onZoomChange === 'function') {
+      event.preventDefault();
+      const zoomDelta = event.deltaY < 0 ? WHEEL_ZOOM_STEP : -WHEEL_ZOOM_STEP;
+      const nextZoom = Math.max(MIN_ZOOM, Math.min(MAX_ZOOM, zoom + zoomDelta));
+      if (nextZoom !== zoom) {
+        onZoomChange(nextZoom);
+      }
+      return;
+    }
+
+    if (event.shiftKey) {
+      event.preventDefault();
+      body.scrollLeft += event.deltaY !== 0 ? event.deltaY : event.deltaX;
+    }
+  }, [zoom, onZoomChange]);
+
   const handleTimelineClick = (e) => {
     if (e.target.closest('.clip') || e.target.closest('.resize-handle')) return;
 
@@ -306,8 +360,14 @@ const DAWTimeline = ({
       const rect = bodyRef.current.getBoundingClientRect();
       const x = e.clientX - rect.left + bodyRef.current.scrollLeft;
       const time = snapTime(x / scale);
-      const trackId = e.target.closest('.track-lane').dataset.trackId;
-      onAddClip?.(trackId, time);
+      const trackId = normalizeTrackId(e.target.closest('.track-lane').dataset.trackId);
+      const shouldAddClip = e.detail >= 2 || e.altKey;
+
+      if (shouldAddClip && trackId !== null) {
+        onAddClip?.(trackId, time);
+      } else {
+        onTimelineClick?.(time);
+      }
       return;
     }
 
@@ -332,9 +392,9 @@ const DAWTimeline = ({
     if (!body) return { trackId: null, startTime: 0 };
 
     const laneElement = event.target?.closest?.('.track-lane');
-    const laneTrackId = laneElement?.dataset?.trackId || null;
-    const fallbackTrackId = tracks[0]?.id || null;
-    const trackId = laneTrackId || fallbackTrackId;
+    const laneTrackId = normalizeTrackId(laneElement?.dataset?.trackId);
+    const fallbackTrackId = normalizeTrackId(tracks[0]?.id);
+    const trackId = laneTrackId ?? fallbackTrackId;
 
     const rect = body.getBoundingClientRect();
     const x = event.clientX - rect.left + body.scrollLeft;
@@ -349,7 +409,7 @@ const DAWTimeline = ({
     event.preventDefault();
     event.dataTransfer.dropEffect = 'copy';
     const laneElement = event.target?.closest?.('.track-lane');
-    setDropLaneTrackId(laneElement?.dataset?.trackId || null);
+    setDropLaneTrackId(normalizeTrackId(laneElement?.dataset?.trackId));
   }, [getAudioFilesFromDataTransfer]);
 
   const handleTimelineDrop = useCallback((event) => {
@@ -361,7 +421,7 @@ const DAWTimeline = ({
     const { trackId, startTime } = resolveDropTrackAndTime(event);
     setDropLaneTrackId(null);
 
-    if (!trackId) return;
+    if (trackId === null) return;
     onExternalAudioDrop?.({
       trackId,
       startTime,
@@ -417,23 +477,62 @@ const DAWTimeline = ({
     setIsDragging(true);
     setDragClip(clip);
     setDragStartX(e.clientX);
-    setDragOriginalStart(clip.startTime);
+    setDragStartY(e.clientY);
+    lastMovePreviewAtRef.current = 0;
+
+    if (bodyRef.current) {
+      const rect = bodyRef.current.getBoundingClientRect();
+      const pointerX = e.clientX - rect.left + bodyRef.current.scrollLeft;
+      const pointerTime = pointerX / scale;
+      setDragPointerOffset(Math.max(0, pointerTime - clip.startTime));
+    } else {
+      setDragPointerOffset(0);
+    }
+
+    lastDragPositionRef.current = {
+      clipId: clip.id,
+      trackId: normalizeTrackId(clip.trackId),
+      startTime: clip.startTime
+    };
   };
 
   const handleMouseMove = useCallback((e) => {
     if (isDragging && dragClip && bodyRef.current) {
       const rect = bodyRef.current.getBoundingClientRect();
       const deltaX = e.clientX - dragStartX;
-      const deltaTime = deltaX / scale;
-      const newStartTime = Math.max(0, snapTime(dragOriginalStart + deltaTime));
+      const deltaY = e.clientY - dragStartY;
+      const movedEnough = Math.abs(deltaX) >= DRAG_THRESHOLD_PX || Math.abs(deltaY) >= DRAG_THRESHOLD_PX;
+
+      if (!movedEnough) {
+        return;
+      }
+
+      const pointerX = e.clientX - rect.left + bodyRef.current.scrollLeft;
+      const pointerTime = pointerX / scale;
+      const newStartTime = Math.max(0, snapDragTime(pointerTime - dragPointerOffset));
 
       // Determine new track from Y position
       const y = e.clientY - rect.top + bodyRef.current.scrollTop;
       const trackIndex = Math.floor(y / 60);
       const newTrackId = tracks[Math.max(0, Math.min(trackIndex, tracks.length - 1))]?.id;
+      const normalizedTrackId = normalizeTrackId(newTrackId);
+      const lastDragPosition = lastDragPositionRef.current;
 
-      if (newTrackId && (newStartTime !== dragClip.startTime || newTrackId !== dragClip.trackId)) {
-        onClipMove?.(dragClip.id, newTrackId, newStartTime);
+      if (normalizedTrackId !== null && (
+        !lastDragPosition ||
+        newStartTime !== lastDragPosition.startTime ||
+        normalizedTrackId !== lastDragPosition.trackId
+      )) {
+        const now = performance.now();
+        if ((now - lastMovePreviewAtRef.current) >= DRAG_PREVIEW_FRAME_MS) {
+          onClipMove?.(dragClip.id, normalizedTrackId, newStartTime);
+          lastMovePreviewAtRef.current = now;
+        }
+        lastDragPositionRef.current = {
+          clipId: dragClip.id,
+          trackId: normalizedTrackId,
+          startTime: newStartTime
+        };
       }
     }
 
@@ -442,25 +541,53 @@ const DAWTimeline = ({
       const deltaTime = deltaX / scale;
 
       if (resizeEdge === 'right') {
-        const newDuration = Math.max(0.25, snapTime(resizeOriginalDuration + deltaTime));
+        const newDuration = Math.max(0.25, snapDragTime(resizeOriginalDuration + deltaTime));
         onClipResize?.(resizeClip.id, resizeOriginalStart, newDuration);
       } else if (resizeEdge === 'left') {
-        const newStartTime = Math.max(0, snapTime(resizeOriginalStart + deltaTime));
+        const newStartTime = Math.max(0, snapDragTime(resizeOriginalStart + deltaTime));
         const newDuration = Math.max(0.25, resizeOriginalStart + resizeOriginalDuration - newStartTime);
         if (newDuration >= 0.25) {
           onClipResize?.(resizeClip.id, newStartTime, newDuration);
         }
       }
     }
-  }, [isDragging, dragClip, dragStartX, dragOriginalStart, scale, snapTime, tracks, onClipMove, isResizing, resizeClip, resizeEdge, resizeStartX, resizeOriginalStart, resizeOriginalDuration, onClipResize]);
+  }, [isDragging, dragClip, dragStartX, dragStartY, dragPointerOffset, scale, snapDragTime, tracks, onClipMove, isResizing, resizeClip, resizeEdge, resizeStartX, resizeOriginalStart, resizeOriginalDuration, onClipResize]);
 
   const handleMouseUp = useCallback(() => {
+    if (isDragging && dragClip) {
+      const lastDragPosition = lastDragPositionRef.current;
+      const originalTrackId = normalizeTrackId(dragClip.trackId);
+      const hasCommittedMove = !!lastDragPosition
+        && (lastDragPosition.startTime !== dragClip.startTime || lastDragPosition.trackId !== originalTrackId);
+
+      if (hasCommittedMove) {
+        onClipMoveEnd?.(dragClip.id, lastDragPosition.trackId, lastDragPosition.startTime);
+      }
+    }
+
     setIsDragging(false);
     setDragClip(null);
     setIsResizing(false);
     setResizeClip(null);
     setResizeEdge(null);
-  }, []);
+    setDragPointerOffset(0);
+    lastMovePreviewAtRef.current = 0;
+    lastDragPositionRef.current = null;
+  }, [isDragging, dragClip, onClipMoveEnd]);
+
+  useEffect(() => {
+    if (!isDragging && !isResizing) return undefined;
+
+    const previousCursor = document.body.style.cursor;
+    const previousUserSelect = document.body.style.userSelect;
+    document.body.style.cursor = isResizing ? 'ew-resize' : 'grabbing';
+    document.body.style.userSelect = 'none';
+
+    return () => {
+      document.body.style.cursor = previousCursor;
+      document.body.style.userSelect = previousUserSelect;
+    };
+  }, [isDragging, isResizing]);
 
   useEffect(() => {
     if (isDragging || isResizing) {
@@ -546,28 +673,67 @@ const DAWTimeline = ({
     }
   };
 
-  // Generate fake waveform data
-  const generateWaveform = (clipId, width) => {
-    const segments = Math.floor(width / 4);
-    return Array.from({ length: segments }, (_, i) => ({
-      x: i * 4,
-      height: 10 + Math.random() * 24
-    }));
-  };
+  const clipsByTrack = useMemo(() => {
+    const grouped = new Map();
+    clips.forEach((clip) => {
+      const trackId = normalizeTrackId(clip.trackId);
+      if (!trackId) return;
+      if (!grouped.has(trackId)) grouped.set(trackId, []);
+      grouped.get(trackId).push(clip);
+    });
+    return grouped;
+  }, [clips]);
 
-  // Generate fake MIDI notes
-  const generateMidiNotes = (clip) => {
-    const notes = [];
-    const noteCount = Math.floor(clip.duration * 4);
-    for (let i = 0; i < noteCount; i++) {
-      notes.push({
-        left: (i / noteCount) * 100 + '%',
-        top: 10 + Math.random() * 30,
-        width: `${80 / noteCount}%`
-      });
+  const getWaveformData = useCallback((clipId, width) => {
+    const segmentCount = Math.max(1, Math.floor(width / 4));
+    const cacheKey = `${String(clipId)}:${segmentCount}`;
+    const cached = waveformCacheRef.current.get(cacheKey);
+    if (cached) return cached;
+
+    let seed = 0;
+    const source = String(clipId);
+    for (let i = 0; i < source.length; i += 1) {
+      seed = (seed * 31 + source.charCodeAt(i)) >>> 0;
     }
+
+    const data = Array.from({ length: segmentCount }, (_, i) => {
+      seed = (seed * 1664525 + 1013904223) >>> 0;
+      const normalized = seed / 0xffffffff;
+      return {
+        x: i * 4,
+        height: 10 + normalized * 24
+      };
+    });
+
+    waveformCacheRef.current.set(cacheKey, data);
+    return data;
+  }, []);
+
+  const getMidiNoteData = useCallback((clip) => {
+    const noteCount = Math.max(1, Math.floor(clip.duration * 4));
+    const cacheKey = `${String(clip.id)}:${noteCount}`;
+    const cached = midiCacheRef.current.get(cacheKey);
+    if (cached) return cached;
+
+    let seed = 0;
+    const source = String(clip.id);
+    for (let i = 0; i < source.length; i += 1) {
+      seed = (seed * 33 + source.charCodeAt(i)) >>> 0;
+    }
+
+    const notes = Array.from({ length: noteCount }, (_, i) => {
+      seed = (seed * 1103515245 + 12345) >>> 0;
+      const normalized = seed / 0xffffffff;
+      return {
+        left: `${(i / noteCount) * 100}%`,
+        top: 10 + normalized * 30,
+        width: `${80 / noteCount}%`
+      };
+    });
+
+    midiCacheRef.current.set(cacheKey, notes);
     return notes;
-  };
+  }, []);
 
   const playheadPosition = currentTime * scale - scrollLeft;
   const loopLeft = loopStart * scale - scrollLeft;
@@ -594,6 +760,7 @@ const DAWTimeline = ({
         ref={bodyRef}
         style={timelineBodyStyle}
         onScroll={handleScroll}
+        onWheel={handleTimelineWheel}
         onClick={handleTimelineClick}
         onDragOver={handleTimelineDragOver}
         onDrop={handleTimelineDrop}
@@ -612,7 +779,7 @@ const DAWTimeline = ({
               className="track-lane"
               style={{
                 ...(index % 2 === 0 ? trackLaneStyle : trackLaneAltStyle),
-                ...(dropLaneTrackId === String(track.id) || dropLaneTrackId === track.id
+                ...(dropLaneTrackId !== null && isSameTrackId(track.id, dropLaneTrackId)
                   ? {
                     outline: '2px dashed rgba(79, 195, 247, 0.85)',
                     outlineOffset: '-2px',
@@ -621,8 +788,7 @@ const DAWTimeline = ({
                   : {})
               }}
             >
-              {clips
-                .filter(clip => clip.trackId === track.id)
+              {(clipsByTrack.get(normalizeTrackId(track.id)) || [])
                 .map(clip => {
                   const isSelected = selectedClipIds.includes(clip.id);
                   const clipWidth = clip.duration * scale;
@@ -647,7 +813,7 @@ const DAWTimeline = ({
                       {/* Waveform for audio clips */}
                       {clip.type === 'audio' && (
                         <div style={waveformStyle}>
-                          {generateWaveform(clip.id, clipWidth).map((bar, i) => (
+                          {getWaveformData(clip.id, clipWidth).map((bar, i) => (
                             <div
                               key={i}
                               style={{
@@ -667,7 +833,7 @@ const DAWTimeline = ({
                       {/* MIDI notes visualization */}
                       {clip.type === 'midi' && (
                         <div style={{ position: 'relative', width: '100%', height: '100%' }}>
-                          {generateMidiNotes(clip).map((note, i) => (
+                          {getMidiNoteData(clip).map((note, i) => (
                             <div
                               key={i}
                               style={{

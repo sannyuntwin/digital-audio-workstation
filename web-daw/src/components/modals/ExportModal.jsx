@@ -253,6 +253,19 @@ const cancelBtnStyle = {
   transition: 'all 0.2s ease'
 };
 
+const QUALITY_OPTIONS = {
+  wav: [
+    { value: 'low', label: 'Low (16-bit, 44.1kHz)', sampleRate: 44100, bitDepth: 16 },
+    { value: 'medium', label: 'Medium (24-bit, 48kHz)', sampleRate: 48000, bitDepth: 24 },
+    { value: 'high', label: 'High (32-bit, 96kHz)', sampleRate: 96000, bitDepth: 32 }
+  ],
+  mp3: [
+    { value: 'low', label: 'Low (128 kbps)', bitrate: 128 },
+    { value: 'medium', label: 'Medium (192 kbps)', bitrate: 192 },
+    { value: 'high', label: 'High (320 kbps)', bitrate: 320 }
+  ]
+};
+
   
   const ExportModal = ({ tracks, clips, projectName, onClose }) => {
   const [exportFormat, setExportFormat] = useState('wav');
@@ -289,22 +302,9 @@ const cancelBtnStyle = {
     { value: 'custom', label: 'Custom Range', description: 'Specify custom start and end times' }
   ];
 
-  const qualityOptions = {
-    wav: [
-      { value: 'low', label: 'Low (16-bit, 44.1kHz)', sampleRate: 44100, bitDepth: 16 },
-      { value: 'medium', label: 'Medium (24-bit, 48kHz)', sampleRate: 48000, bitDepth: 24 },
-      { value: 'high', label: 'High (32-bit, 96kHz)', sampleRate: 96000, bitDepth: 32 }
-    ],
-    mp3: [
-      { value: 'low', label: 'Low (128 kbps)', bitrate: 128 },
-      { value: 'medium', label: 'Medium (192 kbps)', bitrate: 192 },
-      { value: 'high', label: 'High (320 kbps)', bitrate: 320 }
-    ]
-  };
-
   useEffect(() => {
     // Update quality settings when format changes
-    const currentQuality = qualityOptions[exportFormat]?.find(q => q.value === quality);
+    const currentQuality = QUALITY_OPTIONS[exportFormat]?.find(q => q.value === quality);
     if (currentQuality) {
       if (exportFormat === 'wav') {
         setSampleRate(currentQuality.sampleRate);
@@ -313,7 +313,7 @@ const cancelBtnStyle = {
         setMp3Bitrate(currentQuality.bitrate);
       }
     }
-  }, [qualityOptions, exportFormat]);
+  }, [exportFormat, quality]);
 
   const handleExport = async () => {
     setIsExporting(true);
@@ -527,7 +527,7 @@ const cancelBtnStyle = {
               onChange={(e) => setQuality(e.target.value)}
               style={selectStyle}
             >
-              {qualityOptions[exportFormat]?.map(qual => (
+              {QUALITY_OPTIONS[exportFormat]?.map(qual => (
                 <option key={qual.value} value={qual.value}>
                   {qual.label}
                 </option>
@@ -548,7 +548,7 @@ const cancelBtnStyle = {
               </div>
               <div style={previewItemStyle}>
                 <span style={previewLabelStyle}>Quality:</span>
-                <span>{qualityOptions[exportFormat]?.find(q => q.value === quality)?.label}</span>
+                <span>{QUALITY_OPTIONS[exportFormat]?.find(q => q.value === quality)?.label}</span>
               </div>
               <div style={previewItemStyle}>
                 <span style={previewLabelStyle}>Duration:</span>

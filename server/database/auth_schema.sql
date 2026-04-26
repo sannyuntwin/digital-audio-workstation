@@ -18,5 +18,14 @@ ALTER TABLE projects ADD COLUMN IF NOT EXISTS user_id UUID REFERENCES users(id) 
 CREATE INDEX IF NOT EXISTS idx_projects_user_id ON projects(user_id);
 
 -- Create trigger for users updated_at
-CREATE TRIGGER update_users_updated_at BEFORE UPDATE ON users
-    FOR EACH ROW EXECUTE FUNCTION update_updated_at_column();
+DO $$
+BEGIN
+    IF NOT EXISTS (
+        SELECT 1
+        FROM pg_trigger
+        WHERE tgname = 'update_users_updated_at'
+    ) THEN
+        CREATE TRIGGER update_users_updated_at BEFORE UPDATE ON users
+            FOR EACH ROW EXECUTE FUNCTION update_updated_at_column();
+    END IF;
+END $$;

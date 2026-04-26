@@ -9,9 +9,10 @@ import audioEngine from '../audio/AudioEngine';
 // ============ STYLES ============
 const pageStyle = {
   minHeight: '100vh',
+  height: '100vh',
   display: 'flex',
   flexDirection: 'column',
-  padding: '12px',
+  padding: 0,
   background: 'radial-gradient(circle at 15% 0%, #2a3f5f 0%, #131722 48%, #0d1118 100%)',
   color: '#f5f7fa',
   fontFamily: '"Avenir Next", "SF Pro Display", "Segoe UI", sans-serif'
@@ -21,7 +22,7 @@ const workspaceFrameStyle = {
   flex: 1,
   display: 'flex',
   flexDirection: 'column',
-  borderRadius: '16px',
+  borderRadius: 0,
   border: '1px solid rgba(148, 163, 184, 0.26)',
   background: 'rgba(8, 12, 18, 0.82)',
   boxShadow: '0 28px 52px rgba(0, 0, 0, 0.46)',
@@ -404,33 +405,27 @@ const statusAlertStyle = {
   color: '#fde68a'
 };
 
-const assetLibrary = [
-  { name: 'Kick_808.wav', type: 'Sample', detail: 'One Shot' },
-  { name: 'Snare_Snap.wav', type: 'Sample', detail: 'One Shot' },
-  { name: 'House_Hat_Loop.wav', type: 'Loop', detail: '124 BPM' },
-  { name: 'Deep_Bass_01.wav', type: 'Loop', detail: '8 Bars' },
-  { name: 'Analog_Stab.wav', type: 'Sample', detail: 'One Shot' }
-];
+const assetLibrary = [];
 
-const instrumentLibrary = [
-  { name: 'Analog Poly', family: 'Synth', preset: 'Warm Pad' },
-  { name: 'Mono Bass', family: 'Synth', preset: 'Solid Sub' },
-  { name: 'FM Keys', family: 'Keys', preset: 'Glass Bell' },
-  { name: 'Drum Rack', family: 'Drums', preset: 'Studio Kit' },
-  { name: 'String Ensemble', family: 'Orchestral', preset: 'Wide Layer' }
-];
+const instrumentLibrary = [];
 
-const effectLibrary = [
-  { name: 'Channel EQ', state: 'On', value: 'HP 90Hz' },
-  { name: 'Compressor', state: 'On', value: '3.0:1' },
-  { name: 'Reverb', state: 'On', value: 'Hall 18%' },
-  { name: 'Delay', state: 'Off', value: '1/8 PingPong' },
-  { name: 'Limiter', state: 'On', value: '-0.8dB' }
-];
+const effectLibrary = [];
 
 const getIsCompactLayout = () => (
   typeof window !== 'undefined' ? window.innerWidth < 1180 : false
 );
+
+const normalizeTrackId = (value) => {
+  if (value === null || value === undefined) return null;
+  const normalized = String(value).trim();
+  return normalized.length > 0 ? normalized : null;
+};
+
+const isSameTrackId = (left, right) => {
+  const normalizedLeft = normalizeTrackId(left);
+  const normalizedRight = normalizeTrackId(right);
+  return normalizedLeft !== null && normalizedRight !== null && normalizedLeft === normalizedRight;
+};
 
 const formatDuration = (seconds) => {
   const rounded = Math.max(0, Math.floor(seconds));
@@ -443,6 +438,30 @@ const formatDuration = (seconds) => {
   }
 
   return `${String(minutes).padStart(2, '0')}:${String(secs).padStart(2, '0')}`;
+};
+
+const getBarDurationSeconds = (bpmValue, signatureValue) => {
+  const safeBpm = Math.max(1, Number(bpmValue) || 120);
+  let numerator = 4;
+  let denominator = 4;
+
+  if (typeof signatureValue === 'string') {
+    const [n, d] = signatureValue.split('/').map((part) => parseInt(part, 10));
+    if (Number.isFinite(n) && n > 0) numerator = n;
+    if (Number.isFinite(d) && d > 0) denominator = d;
+  } else if (signatureValue && typeof signatureValue === 'object') {
+    if (Number.isFinite(signatureValue.numerator) && signatureValue.numerator > 0) {
+      numerator = signatureValue.numerator;
+    }
+    if (Number.isFinite(signatureValue.denominator) && signatureValue.denominator > 0) {
+      denominator = signatureValue.denominator;
+    }
+  }
+
+  const secondsPerQuarter = 60 / safeBpm;
+  const beatFactor = 4 / denominator;
+  const secondsPerBeat = secondsPerQuarter * beatFactor;
+  return Math.max(0.1, numerator * secondsPerBeat);
 };
 
 const DAWInterfacePage = () => {
@@ -513,13 +532,6 @@ const DAWInterfacePage = () => {
   // Undo/Redo history - stores snapshots of tracks and clips
   const [history, setHistory] = useState([{ tracks: [], clips: [] }]);
   const [historyIndex, setHistoryIndex] = useState(0);
-
-  // Initialize history on first render
-  useEffect(() => {
-    if (history[0].tracks.length === 0) {
-      setHistory([{ tracks: JSON.parse(JSON.stringify(tracks)), clips: JSON.parse(JSON.stringify(clips)) }]);
-    }
-  }, [tracks, clips, history]);
 
   // Save state to history after significant changes
   const pushHistory = (newTracks, newClips) => {
@@ -884,7 +896,7 @@ const DAWInterfacePage = () => {
   };
 
   const handleZoomToFit = () => {
-    const maxTime = Math.max(...clips.map(c => c.startTime + c.duration), 60);
+    const maxTime = timelineDuration;
     const newZoom = Math.min(200, Math.max(50, Math.floor((800 / maxTime) * 5)));
     setZoom(newZoom);
   };
@@ -962,27 +974,52 @@ const DAWInterfacePage = () => {
 
   // Track handlers
   const handleTrackSelect = (trackId) => {
-    setTracks(prev => prev.map(t => ({ ...t, selected: t.id === trackId })));
+    const normalizedTrackId = normalizeTrackId(trackId);
+    if (normalizedTrackId === null) return;
+    setTracks(prev => prev.map(t => ({ ...t, selected: isSameTrackId(t.id, normalizedTrackId) })));
   };
 
   const handleTrackMute = (trackId) => {
-    setTracks(prev => prev.map(t => t.id === trackId ? { ...t, muted: !t.muted } : t));
+    const normalizedTrackId = normalizeTrackId(trackId);
+    if (normalizedTrackId === null) return;
+    setTracks(prev => prev.map(t => isSameTrackId(t.id, normalizedTrackId) ? { ...t, muted: !t.muted } : t));
   };
 
   const handleTrackSolo = (trackId) => {
-    setTracks(prev => prev.map(t => t.id === trackId ? { ...t, solo: !t.solo } : t));
+    const normalizedTrackId = normalizeTrackId(trackId);
+    if (normalizedTrackId === null) return;
+    setTracks(prev => prev.map(t => isSameTrackId(t.id, normalizedTrackId) ? { ...t, solo: !t.solo } : t));
   };
 
   const handleTrackArm = (trackId) => {
-    setTracks(prev => prev.map(t => t.id === trackId ? { ...t, armed: !t.armed } : t));
+    const normalizedTrackId = normalizeTrackId(trackId);
+    if (normalizedTrackId === null) return;
+    setTracks(prev => prev.map(t => isSameTrackId(t.id, normalizedTrackId) ? { ...t, armed: !t.armed } : t));
   };
 
   const handleDeleteTrack = (trackId) => {
-    setTracks(prev => {
-      const newTracks = prev.filter(t => t.id !== trackId);
-      pushHistory(newTracks, clips);
-      return newTracks;
-    });
+    const normalizedTrackId = normalizeTrackId(trackId);
+    if (normalizedTrackId === null) return;
+
+    const deletedTrackIndex = tracks.findIndex((track) => isSameTrackId(track.id, normalizedTrackId));
+    const remainingTracks = tracks.filter((track) => !isSameTrackId(track.id, normalizedTrackId));
+    const selectedRemainingTrack = remainingTracks.find((track) => track.selected);
+    const fallbackIndex = Math.min(
+      Math.max(deletedTrackIndex, 0),
+      Math.max(remainingTracks.length - 1, 0)
+    );
+    const fallbackTrackId = remainingTracks[fallbackIndex]?.id ?? remainingTracks[0]?.id ?? null;
+    const nextSelectedTrackId = selectedRemainingTrack?.id ?? fallbackTrackId;
+
+    const normalizedTracks = remainingTracks.map((track) => ({
+      ...track,
+      selected: nextSelectedTrackId !== null && isSameTrackId(track.id, nextSelectedTrackId)
+    }));
+    const nextClips = clips.filter((clip) => !isSameTrackId(clip.trackId, normalizedTrackId));
+
+    setTracks(normalizedTracks);
+    setClips(nextClips);
+    pushHistory(normalizedTracks, nextClips);
   };
 
   const handleRenameTrack = (trackId, currentName) => {
@@ -1012,7 +1049,10 @@ const DAWInterfacePage = () => {
   };
 
   const handleDuplicateTrack = (trackId) => {
-    const track = tracks.find(t => t.id === trackId);
+    const normalizedTrackId = normalizeTrackId(trackId);
+    if (normalizedTrackId === null) return;
+
+    const track = tracks.find((t) => isSameTrackId(t.id, normalizedTrackId));
     if (!track) return;
     const newId = Math.max(...tracks.map(t => t.id), 0) + 1;
     const newTrack = {
@@ -1030,9 +1070,12 @@ const DAWInterfacePage = () => {
   };
 
   const handleChangeTrackType = (trackId) => {
+    const normalizedTrackId = normalizeTrackId(trackId);
+    if (normalizedTrackId === null) return;
+
     setTracks(prev => {
       const newTracks = prev.map(t => {
-        if (t.id !== trackId) return t;
+        if (!isSameTrackId(t.id, normalizedTrackId)) return t;
         const newType = t.type === 'audio' ? 'midi' : 'audio';
         return { ...t, type: newType, icon: newType === 'audio' ? '🎙️' : '🎹' };
       });
@@ -1042,11 +1085,15 @@ const DAWInterfacePage = () => {
   };
 
   const handleVolumeChange = (trackId, volume) => {
-    setTracks(prev => prev.map(t => t.id === trackId ? { ...t, volume } : t));
+    const normalizedTrackId = normalizeTrackId(trackId);
+    if (normalizedTrackId === null) return;
+    setTracks(prev => prev.map(t => isSameTrackId(t.id, normalizedTrackId) ? { ...t, volume } : t));
   };
 
   const handlePanChange = (trackId, pan) => {
-    setTracks(prev => prev.map(t => t.id === trackId ? { ...t, pan } : t));
+    const normalizedTrackId = normalizeTrackId(trackId);
+    if (normalizedTrackId === null) return;
+    setTracks(prev => prev.map(t => isSameTrackId(t.id, normalizedTrackId) ? { ...t, pan } : t));
   };
 
   // Add track handler
@@ -1096,9 +1143,21 @@ const DAWInterfacePage = () => {
   };
 
   const handleClipMove = (clipId, newTrackId, newStartTime) => {
+    const normalizedTrackId = normalizeTrackId(newTrackId);
+    if (normalizedTrackId === null) return;
+
+    setClips((prev) => prev.map((clip) =>
+      clip.id === clipId ? { ...clip, trackId: normalizedTrackId, startTime: newStartTime } : clip
+    ));
+  };
+
+  const handleClipMoveEnd = (clipId, newTrackId, newStartTime) => {
+    const normalizedTrackId = normalizeTrackId(newTrackId);
+    if (normalizedTrackId === null) return;
+
     setClips(prev => {
       const newClips = prev.map(c =>
-        c.id === clipId ? { ...c, trackId: newTrackId, startTime: newStartTime } : c
+        c.id === clipId ? { ...c, trackId: normalizedTrackId, startTime: newStartTime } : c
       );
       pushHistory(tracks, newClips);
       return newClips;
@@ -1135,15 +1194,18 @@ const DAWInterfacePage = () => {
   };
 
   const handleAddClip = (trackId, startTime) => {
-    const track = tracks.find(t => t.id === trackId);
+    const normalizedTrackId = normalizeTrackId(trackId);
+    if (normalizedTrackId === null) return;
+
+    const track = tracks.find((t) => isSameTrackId(t.id, normalizedTrackId));
     if (!track) return;
 
     const newClipId = Math.max(...clips.map(c => c.id), 0) + 1;
-    const clipCount = clips.filter(c => c.trackId === trackId).length;
+    const clipCount = clips.filter((c) => isSameTrackId(c.trackId, normalizedTrackId)).length;
 
     const newClip = {
       id: newClipId,
-      trackId,
+      trackId: normalizedTrackId,
       name: `${track.name} Clip ${clipCount + 1}`,
       type: track.type,
       startTime,
@@ -1159,6 +1221,8 @@ const DAWInterfacePage = () => {
 
   const selectedTrack = tracks.find(track => track.selected);
   const arrangementLength = Math.max(...clips.map(c => c.startTime + c.duration), 0);
+  const timelineDuration = Math.max(arrangementLength + 15, 300);
+  const barSnapSeconds = getBarDurationSeconds(bpm, timeSignature);
   const pianoRollNotes = clips
     .filter(clip => clip.type === 'midi')
     .slice(0, 10)
@@ -1238,35 +1302,35 @@ const DAWInterfacePage = () => {
             <button
               type="button"
               style={quickNavBtnStyle}
-              onClick={() => navigate(`/daw/${projectId}/piano-roll`)}
+              onClick={() => navigate(`/project/${projectId}/piano-roll`)}
             >
               Open Piano Roll Page
             </button>
             <button
               type="button"
               style={quickNavBtnStyle}
-              onClick={() => navigate(`/daw/${projectId}/mixer`)}
+              onClick={() => navigate(`/project/${projectId}/mixer`)}
             >
               Open Mixer View
             </button>
             <button
               type="button"
               style={quickNavBtnStyle}
-              onClick={() => navigate(`/daw/${projectId}/sound-library`)}
+              onClick={() => navigate(`/project/${projectId}/sound-library`)}
             >
               Sound Library
             </button>
             <button
               type="button"
               style={quickNavBtnStyle}
-              onClick={() => navigate(`/daw/${projectId}/settings`)}
+              onClick={() => navigate(`/project/${projectId}/settings`)}
             >
               Settings
             </button>
             <button
               type="button"
               style={quickNavBtnStyle}
-              onClick={() => navigate(`/daw/${projectId}/export`)}
+              onClick={() => navigate(`/project/${projectId}/export`)}
             >
               Export
             </button>
@@ -1372,13 +1436,14 @@ const DAWInterfacePage = () => {
                         clips={clips}
                         currentTime={playheadTime}
                         zoom={zoom}
-                        duration={60}
+                        duration={timelineDuration}
                         selectedClipIds={selectedClipIds}
                         loopEnabled={loopEnabled}
                         loopStart={loopStart}
                         loopEnd={loopEnd}
                         snapEnabled={snapGrid > 0}
                         snapGrid={snapGrid || 0.25}
+                        barSnapSeconds={barSnapSeconds}
                         onTimelineClick={handleTimelineClick}
                         onClipClick={handleClipClick}
                         onClipsSelected={handleClipsSelected}
@@ -1386,7 +1451,9 @@ const DAWInterfacePage = () => {
                         onClipSplit={handleClipSplit}
                         onAddClip={handleAddClip}
                         onClipMove={handleClipMove}
+                        onClipMoveEnd={handleClipMoveEnd}
                         onClipResize={handleClipResize}
+                        onZoomChange={(nextZoom) => setZoom(Math.max(50, Math.min(200, nextZoom)))}
                       />
                     </div>
                   </div>
@@ -1398,7 +1465,7 @@ const DAWInterfacePage = () => {
                         <button
                           type="button"
                           style={panelTabStyle}
-                          onClick={() => navigate(`/daw/${projectId}/piano-roll`)}
+                          onClick={() => navigate(`/project/${projectId}/piano-roll`)}
                         >
                           Open Full Piano Roll
                         </button>

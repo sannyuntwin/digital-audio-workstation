@@ -112,7 +112,9 @@ router.get('/me', authenticate, async (req, res) => {
     // Remove password hash from user object
     const { password_hash, ...userWithoutPassword } = user;
     
-    res.status(200).json(userWithoutPassword);
+    res.status(200).json({
+      user: userWithoutPassword
+    });
   } catch (error) {
     console.error('Get user error:', error);
     res.status(500).json({ message: 'Server error' });

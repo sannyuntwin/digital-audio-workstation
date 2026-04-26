@@ -209,6 +209,7 @@ class ProjectModel {
         })
         .update({
           name: trackData.name,
+          type: trackData.type,
           volume: trackData.volume,
           pan: trackData.pan,
           is_muted: trackData.isMuted,
@@ -282,7 +283,6 @@ class ProjectModel {
           file_name: clipData.fileName,
           file_path: clipData.filePath,
           file_size: clipData.fileSize,
-          mime_type: clipData.mimeType,
           sample_rate: clipData.sampleRate,
           bit_depth: clipData.bitDepth,
           channels: clipData.channels,
